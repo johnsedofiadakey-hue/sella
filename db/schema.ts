@@ -126,6 +126,10 @@ export const tenants = pgTable("tenants", {
   themePrimaryColor: text("theme_primary_color"),
   themeAccentColor: text("theme_accent_color"),
   logoUrl: text("logo_url"),
+  // Set once the merchant links payout details (lib/paystack.ts createSubaccount).
+  // Presence gates whether Paystack checkout is offered for this store at all —
+  // StormGlide must never hold merchant money (Part 2 §2).
+  paystackSubaccountCode: text("paystack_subaccount_code"),
   kycLevel: integer("kyc_level").notNull().default(0), // 0 phone, 1 identity, 2 business (Part 2 §3)
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

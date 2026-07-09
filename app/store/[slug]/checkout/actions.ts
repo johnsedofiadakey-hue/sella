@@ -40,7 +40,7 @@ export async function placeOrder(slug: string, formData: FormData) {
   if (fulfillmentType === "delivery" && (!deliveryArea || !deliveryLandmark)) {
     return { error: "Enter your area and a landmark for delivery." };
   }
-  if (paymentMethod === "paystack" && !isPaystackConfigured()) {
+  if (paymentMethod === "paystack" && !(isPaystackConfigured() && tenant.paystackSubaccountCode)) {
     return { error: "Card/MoMo payment isn't available right now — try pay on delivery." };
   }
 
@@ -110,6 +110,12 @@ export async function placeOrder(slug: string, formData: FormData) {
         amountPesewas: totalCents,
         reference: order.id,
         callbackUrl: `${origin}/store/${slug}/checkout/callback?orderId=${order.id}`,
+        // Settlement routes to the merchant's own account, never the
+        // platform's — this is what makes Paystack checkout safe to offer
+        // at all (Part 2 §2). checkout/page.tsx only shows this payment
+        // option once tenant.paystackSubaccountCode exists, so this is
+        // never undefined on this path in practice.
+        subaccount: tenant.paystackSubaccountCode ?? undefined,
         metadata: { tenantId: tenant.id, orderId: order.id },
       });
       authorizationUrl = transaction.authorization_url;

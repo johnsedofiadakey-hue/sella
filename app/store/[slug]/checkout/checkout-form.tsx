@@ -5,16 +5,16 @@ import { placeOrder } from "./actions";
 
 export default function CheckoutForm({
   slug,
-  paystackConfigured,
+  canPayWithPaystack,
 }: {
   slug: string;
-  paystackConfigured: boolean;
+  canPayWithPaystack: boolean;
 }) {
   const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
   // Paystack only ever appears as a choice once it's actually wired up —
   // no disabled "coming soon" option sitting in the UI.
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "paystack">(
-    paystackConfigured ? "paystack" : "cod",
+    canPayWithPaystack ? "paystack" : "cod",
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -88,7 +88,7 @@ export default function CheckoutForm({
         </>
       )}
 
-      {paystackConfigured ? (
+      {canPayWithPaystack ? (
         <div className="flex gap-2">
           <button
             type="button"

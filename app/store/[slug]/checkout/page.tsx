@@ -54,7 +54,10 @@ export default async function CheckoutPage({
           <span>GHS {(total / 100).toFixed(2)}</span>
         </div>
       </div>
-      <CheckoutForm slug={slug} paystackConfigured={isPaystackConfigured()} />
+      <CheckoutForm
+        slug={slug}
+        canPayWithPaystack={isPaystackConfigured() && Boolean(tenant.paystackSubaccountCode)}
+      />
     </div>
   );
 }

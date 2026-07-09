@@ -32,6 +32,10 @@ type InitializeTransactionParams = {
   amountPesewas: number;
   reference: string;
   callbackUrl: string;
+  /** The merchant's subaccount code — when present, settlement routes to
+   * the merchant, not the platform account (Part 2 §2). Checkout is
+   * expected to only offer Paystack once this exists for a tenant. */
+  subaccount?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -58,6 +62,7 @@ export async function initializeTransaction(
       currency: "GHS",
       reference: params.reference,
       callback_url: params.callbackUrl,
+      subaccount: params.subaccount,
       metadata: params.metadata,
     }),
   });
@@ -88,6 +93,80 @@ export async function verifyTransaction(reference: string): Promise<VerifyTransa
     throw new Error(data.message ?? "Could not verify payment.");
   }
   return data.data as VerifyTransactionResult;
+}
+
+export type Bank = { name: string; code: string };
+
+// Bank/MoMo network codes aren't hardcoded here on purpose — Paystack adds
+// and occasionally renumbers these, so the payout form always fetches the
+// live list rather than shipping a snapshot that quietly goes stale.
+export async function listBanks(): Promise<Bank[]> {
+  const secretKey = requireSecretKey();
+
+  const res = await fetch(`${PAYSTACK_BASE_URL}/bank?country=ghana&currency=GHS`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.status) {
+    throw new Error(data.message ?? "Could not load the bank list.");
+  }
+  return (data.data as Array<{ name: string; code: string }>).map((bank) => ({
+    name: bank.name,
+    code: bank.code,
+  }));
+}
+
+// Part 2 §3's "MoMo wallet name match" check — catches a mistyped account
+// number before it becomes a subaccount nobody can get paid into.
+export async function resolveAccountNumber(
+  accountNumber: string,
+  bankCode: string,
+): Promise<{ accountName: string }> {
+  const secretKey = requireSecretKey();
+
+  const res = await fetch(
+    `${PAYSTACK_BASE_URL}/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
+    { headers: { Authorization: `Bearer ${secretKey}` } },
+  );
+
+  const data = await res.json();
+  if (!res.ok || !data.status) {
+    throw new Error(data.message ?? "Could not verify that account.");
+  }
+  return { accountName: data.data.account_name as string };
+}
+
+type CreateSubaccountParams = {
+  businessName: string;
+  bankCode: string;
+  accountNumber: string;
+};
+
+export async function createSubaccount(
+  params: CreateSubaccountParams,
+): Promise<{ subaccountCode: string }> {
+  const secretKey = requireSecretKey();
+
+  const res = await fetch(`${PAYSTACK_BASE_URL}/subaccount`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      business_name: params.businessName,
+      settlement_bank: params.bankCode,
+      account_number: params.accountNumber,
+      percentage_charge: 0, // Part 3 §1 — 0% platform fee on every tier
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.status) {
+    throw new Error(data.message ?? "Could not link payout account.");
+  }
+  return { subaccountCode: data.data.subaccount_code as string };
 }
 
 // Paystack signs webhook bodies with HMAC-SHA512 of the raw request body,
