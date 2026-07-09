@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shoplocal
+      POSTGRES_PASSWORD: shoplocal
+      POSTGRES_DB: shoplocal
+    ports:
+      - "5433:5432"
+    volumes:
+      - shoplocal_db:/var/lib/postgresql/data
+
+volumes:
+  shoplocal_db:
