@@ -43,3 +43,6 @@ next-env.d.ts
 
 # personal machine state — not shared across sessions/devs
 .claude/settings.local.json
+
+# local-disk image upload stand-in (lib/storage.ts) — swapped for R2 later
+/public/uploads

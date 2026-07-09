@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getActiveProductsForTenant, getTenantBySlug, CATEGORY_LABELS } from "@/lib/tenants";
+import { darkShade, lightTint } from "@/lib/color";
 
 export default async function StorefrontPage({
   params,
@@ -12,16 +13,33 @@ export default async function StorefrontPage({
 
   const products = await getActiveProductsForTenant(tenant.id);
 
+  // Only two tokens are merchant-editable (Part 6 §2.3) — everything else
+  // about the header, including the derived text colour, follows from them.
+  const primary = tenant.themePrimaryColor;
+  const headerBg = primary ? lightTint(primary) : "var(--forest-tint)";
+  const headerFg = primary ? darkShade(primary) : "var(--forest-dark)";
+
   return (
     <div className="flex-1">
-      <header
-        className="px-6 py-10"
-        style={{ background: tenant.themePrimaryColor ? undefined : "var(--forest-tint)" }}
-      >
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          {CATEGORY_LABELS[tenant.category] ?? tenant.category}
-        </p>
-        <h1 className="mt-1 text-3xl font-bold text-forest-dark">{tenant.businessName}</h1>
+      <header className="px-6 py-10" style={{ background: headerBg }}>
+        <div className="flex items-center gap-3">
+          {tenant.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- local upload stand-in
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.businessName}
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          )}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              {CATEGORY_LABELS[tenant.category] ?? tenant.category}
+            </p>
+            <h1 className="mt-1 text-3xl font-bold" style={{ color: headerFg }}>
+              {tenant.businessName}
+            </h1>
+          </div>
+        </div>
         {tenant.status === "trial" && (
           <span className="mt-3 inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-gold-ink">
             Trial store — not yet live
@@ -39,7 +57,16 @@ export default async function StorefrontPage({
                 key={product.id}
                 className="overflow-hidden rounded-lg border border-border bg-surface"
               >
-                <div className="aspect-square bg-forest-tint" />
+                <div className="aspect-square bg-forest-tint">
+                  {product.images[0] && (
+                    // eslint-disable-next-line @next/next/no-img-element -- local upload stand-in
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
                 <div className="p-3">
                   <p className="text-sm font-semibold text-ink">{product.name}</p>
                   <p className="text-sm font-bold text-forest">

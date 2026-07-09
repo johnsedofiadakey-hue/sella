@@ -1,12 +1,22 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, tenants, products } from "@/db";
 
 export async function getTenantBySlug(slug: string) {
   return db.query.tenants.findFirst({ where: eq(tenants.slug, slug) });
 }
 
+// Public storefront — only what the merchant has chosen to show.
 export async function getActiveProductsForTenant(tenantId: string) {
+  return db.query.products.findMany({
+    where: and(eq(products.tenantId, tenantId), eq(products.isActive, true)),
+    orderBy: (p, { desc }) => [desc(p.createdAt)],
+  });
+}
+
+// Portal product management — everything, including hidden items, so a
+// merchant can find and re-show something they toggled off.
+export async function getAllProductsForTenant(tenantId: string) {
   return db.query.products.findMany({
     where: eq(products.tenantId, tenantId),
     orderBy: (p, { desc }) => [desc(p.createdAt)],
