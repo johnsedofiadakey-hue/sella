@@ -2,11 +2,13 @@
 
 import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { getTenantBySlug, getProductsByIds } from "@/lib/tenants";
 import { getCart, clearCart } from "@/lib/cart";
 import { db, orders, orderItems } from "@/db";
 import { hashSecret } from "@/lib/crypto";
+import { initializeTransaction, isPaystackConfigured } from "@/lib/paystack";
 
 const checkoutSchema = z.object({
   buyerName: z.string().trim().min(2, "Enter your name."),
@@ -15,6 +17,7 @@ const checkoutSchema = z.object({
   deliveryArea: z.string().trim().optional(),
   deliveryLandmark: z.string().trim().optional(),
   deliveryGpsCode: z.string().trim().optional(),
+  paymentMethod: z.enum(["cod", "paystack"]).default("cod"),
 });
 
 export async function placeOrder(slug: string, formData: FormData) {
@@ -28,12 +31,17 @@ export async function placeOrder(slug: string, formData: FormData) {
     deliveryArea: formData.get("deliveryArea") ?? undefined,
     deliveryLandmark: formData.get("deliveryLandmark") ?? undefined,
     deliveryGpsCode: formData.get("deliveryGpsCode") ?? undefined,
+    paymentMethod: formData.get("paymentMethod") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const { fulfillmentType, deliveryArea, deliveryLandmark, deliveryGpsCode } = parsed.data;
+  const { fulfillmentType, deliveryArea, deliveryLandmark, deliveryGpsCode, paymentMethod } =
+    parsed.data;
   if (fulfillmentType === "delivery" && (!deliveryArea || !deliveryLandmark)) {
     return { error: "Enter your area and a landmark for delivery." };
+  }
+  if (paymentMethod === "paystack" && !isPaystackConfigured()) {
+    return { error: "Card/MoMo payment isn't available right now — try pay on delivery." };
   }
 
   const cart = await getCart(tenant.id);
@@ -86,7 +94,38 @@ export async function placeOrder(slug: string, formData: FormData) {
     })),
   );
 
-  await clearCart(tenant.id);
+  if (paymentMethod === "paystack") {
+    const headerList = await headers();
+    const host = headerList.get("host") ?? "localhost:3000";
+    const protocol = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
+    const origin = `${protocol}://${host}`;
 
+    // initializeTransaction is a real network call to Paystack, so it must
+    // stay inside try/catch — redirect() below must not, since it works by
+    // throwing, and this catch block would otherwise swallow that throw.
+    let authorizationUrl: string;
+    try {
+      const transaction = await initializeTransaction({
+        email: `${parsed.data.buyerPhone.replace(/[^0-9]/g, "")}@buyer.shoplocal.app`,
+        amountPesewas: totalCents,
+        reference: order.id,
+        callbackUrl: `${origin}/store/${slug}/checkout/callback?orderId=${order.id}`,
+        metadata: { tenantId: tenant.id, orderId: order.id },
+      });
+      authorizationUrl = transaction.authorization_url;
+    } catch (err) {
+      // The order already exists as "pending" — left for the merchant to
+      // see, and the buyer can retry payment rather than losing the order.
+      return {
+        error:
+          err instanceof Error ? err.message : "Could not start payment. Try pay on delivery.",
+      };
+    }
+
+    await clearCart(tenant.id);
+    redirect(authorizationUrl);
+  }
+
+  await clearCart(tenant.id);
   redirect(`/track/${order.id}${deliveryOtp ? `?otp=${deliveryOtp}` : ""}`);
 }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTenantBySlug, getProductsByIds } from "@/lib/tenants";
 import { getCart } from "@/lib/cart";
+import { isPaystackConfigured } from "@/lib/paystack";
 import CheckoutForm from "./checkout-form";
 
 export default async function CheckoutPage({
@@ -53,7 +54,7 @@ export default async function CheckoutPage({
           <span>GHS {(total / 100).toFixed(2)}</span>
         </div>
       </div>
-      <CheckoutForm slug={slug} />
+      <CheckoutForm slug={slug} paystackConfigured={isPaystackConfigured()} />
     </div>
   );
 }

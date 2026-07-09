@@ -3,8 +3,19 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { placeOrder } from "./actions";
 
-export default function CheckoutForm({ slug }: { slug: string }) {
+export default function CheckoutForm({
+  slug,
+  paystackConfigured,
+}: {
+  slug: string;
+  paystackConfigured: boolean;
+}) {
   const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
+  // Paystack only ever appears as a choice once it's actually wired up —
+  // no disabled "coming soon" option sitting in the UI.
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "paystack">(
+    paystackConfigured ? "paystack" : "cod",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -13,7 +24,8 @@ export default function CheckoutForm({ slug }: { slug: string }) {
     setError(null);
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      // On success this redirects server-side to the tracking page.
+      // On success this redirects server-side — to the tracking page for
+      // COD, or to Paystack's hosted checkout page for card/MoMo.
       const result = await placeOrder(slug, formData);
       if (result?.error) setError(result.error);
     });
@@ -76,9 +88,37 @@ export default function CheckoutForm({ slug }: { slug: string }) {
         </>
       )}
 
-      <div className="rounded-md border border-border bg-forest-tint p-3 text-sm text-forest-dark">
-        Pay on delivery — cash or MoMo to your rider.
-      </div>
+      {paystackConfigured ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("paystack")}
+            className={`flex-1 rounded-full border px-3 py-2 text-sm font-semibold ${
+              paymentMethod === "paystack"
+                ? "border-forest bg-forest text-white"
+                : "border-border bg-surface text-ink-muted"
+            }`}
+          >
+            MoMo or card
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("cod")}
+            className={`flex-1 rounded-full border px-3 py-2 text-sm font-semibold ${
+              paymentMethod === "cod"
+                ? "border-forest bg-forest text-white"
+                : "border-border bg-surface text-ink-muted"
+            }`}
+          >
+            Pay on delivery
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-md border border-border bg-forest-tint p-3 text-sm text-forest-dark">
+          Pay on delivery — cash or MoMo to your rider.
+        </div>
+      )}
+      <input type="hidden" name="paymentMethod" value={paymentMethod} />
 
       {error && <p className="text-sm text-danger">{error}</p>}
       <button
