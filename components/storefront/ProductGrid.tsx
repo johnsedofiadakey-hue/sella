@@ -1,13 +1,16 @@
 import type { Product } from "@/db/schema";
 import { getSizes } from "@/lib/product-attributes";
+import AddToCartButton from "./AddToCartButton";
 
 // General Retail's default layout, also used by Fashion & Clothing with
 // size pills switched on — same component, different information per
 // category (Part 6 §5.3), not a fork.
 export default function ProductGrid({
+  slug,
   products,
   showSizes,
 }: {
+  slug: string;
   products: Product[];
   showSizes: boolean;
 }) {
@@ -47,6 +50,9 @@ export default function ProductGrid({
                   ))}
                 </div>
               )}
+              <div className="mt-1.5">
+                <AddToCartButton slug={slug} productId={product.id} />
+              </div>
             </div>
           </div>
         );

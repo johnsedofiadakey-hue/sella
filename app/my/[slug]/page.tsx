@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { eq, and } from "drizzle-orm";
 import { requireTenantMember } from "@/lib/authz";
 import { getAllProductsForTenant } from "@/lib/tenants";
 import { getMenuSection, getSizes } from "@/lib/product-attributes";
+import { db, orders } from "@/db";
 import { toggleProductActive, deleteProduct } from "./actions";
 
 export default async function StoreDashboard({
@@ -12,6 +14,9 @@ export default async function StoreDashboard({
   const { slug } = await params;
   const { tenant } = await requireTenantMember(slug);
   const items = await getAllProductsForTenant(tenant.id);
+  const pendingOrders = await db.query.orders.findMany({
+    where: and(eq(orders.tenantId, tenant.id), eq(orders.status, "pending")),
+  });
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
@@ -24,6 +29,9 @@ export default async function StoreDashboard({
           <p className="text-sm text-ink-muted">{tenant.slug}.shoplocal.app</p>
         </div>
         <div className="flex gap-3">
+          <Link href={`/my/${slug}/orders`} className="text-sm font-semibold text-forest">
+            Orders{pendingOrders.length > 0 ? ` · ${pendingOrders.length} new` : ""}
+          </Link>
           <Link href={`/my/${slug}/settings`} className="text-sm font-semibold text-forest">
             Branding
           </Link>

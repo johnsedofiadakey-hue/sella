@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getActiveProductsForTenant, getTenantBySlug, CATEGORY_LABELS } from "@/lib/tenants";
 import { darkShade, lightTint } from "@/lib/color";
+import { getCart } from "@/lib/cart";
 import ProductGrid from "@/components/storefront/ProductGrid";
 import FoodMenu from "@/components/storefront/FoodMenu";
 
@@ -14,6 +16,8 @@ export default async function StorefrontPage({
   if (!tenant) notFound();
 
   const products = await getActiveProductsForTenant(tenant.id);
+  const cart = await getCart(tenant.id);
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Only two tokens are merchant-editable (Part 6 §2.3) — everything else
   // about the header, including the derived text colour, follows from them.
@@ -24,23 +28,31 @@ export default async function StorefrontPage({
   return (
     <div className="flex-1">
       <header className="px-6 py-10" style={{ background: headerBg }}>
-        <div className="flex items-center gap-3">
-          {tenant.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- local upload stand-in
-            <img
-              src={tenant.logoUrl}
-              alt={tenant.businessName}
-              className="h-12 w-12 rounded-full object-cover"
-            />
-          )}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              {CATEGORY_LABELS[tenant.category] ?? tenant.category}
-            </p>
-            <h1 className="mt-1 text-3xl font-bold" style={{ color: headerFg }}>
-              {tenant.businessName}
-            </h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {tenant.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- local upload stand-in
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.businessName}
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            )}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {CATEGORY_LABELS[tenant.category] ?? tenant.category}
+              </p>
+              <h1 className="mt-1 text-3xl font-bold" style={{ color: headerFg }}>
+                {tenant.businessName}
+              </h1>
+            </div>
           </div>
+          <Link
+            href={`/store/${slug}/cart`}
+            className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-sm"
+          >
+            Cart{cartCount > 0 ? ` · ${cartCount}` : ""}
+          </Link>
         </div>
         {tenant.status === "trial" && (
           <span className="mt-3 inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-gold-ink">
@@ -53,9 +65,9 @@ export default async function StorefrontPage({
         {products.length === 0 ? (
           <p className="text-ink-muted">{`${tenant.businessName} hasn't added any products yet.`}</p>
         ) : tenant.category === "food" ? (
-          <FoodMenu products={products} />
+          <FoodMenu slug={slug} products={products} />
         ) : (
-          <ProductGrid products={products} showSizes={tenant.category === "fashion"} />
+          <ProductGrid slug={slug} products={products} showSizes={tenant.category === "fashion"} />
         )}
       </main>
     </div>

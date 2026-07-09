@@ -57,6 +57,14 @@ export function proxy(req: NextRequest) {
   return NextResponse.rewrite(url, { request: { headers } });
 }
 
+// Known debt: in-app storefront links (cart, checkout) are currently
+// written as explicit /store/{slug}/... paths rather than clean relative
+// ones (/cart, /checkout). That's harmless today — real wildcard subdomain
+// DNS isn't live yet (Part 5 Phase 0) — but once it is, a clean link would
+// still resolve correctly through this same rewrite, while an explicit
+// /store/{slug}/... link leaks the internal path into the address bar on
+// a real subdomain. Worth a pass before that DNS work ships.
+
 export const config = {
   matcher: [
     // Skip static assets and Next internals — everything else gets tenant-resolved.

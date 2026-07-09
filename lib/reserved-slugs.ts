@@ -19,6 +19,9 @@ export const RESERVED_SLUGS = new Set([
   "status",
   "blog",
   "store",
+  "track",
+  "terms",
+  "privacy",
 ]);
 
 // Subdomains that resolve to a fixed internal surface rather than a merchant

@@ -1,9 +1,18 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, tenants, products } from "@/db";
 
 export async function getTenantBySlug(slug: string) {
   return db.query.tenants.findFirst({ where: eq(tenants.slug, slug) });
+}
+
+// Cart/checkout re-fetch product rows by id rather than trusting anything
+// stored client-side — prices always come from the DB at checkout time.
+export async function getProductsByIds(tenantId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.query.products.findMany({
+    where: and(eq(products.tenantId, tenantId), inArray(products.id, ids)),
+  });
 }
 
 // Public storefront — only what the merchant has chosen to show.
