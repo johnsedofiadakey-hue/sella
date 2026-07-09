@@ -22,6 +22,10 @@ const productSchema = z.object({
   name: z.string().trim().min(2, "Enter a product name.").max(120),
   priceGhs: z.coerce.number().positive("Enter a valid price."),
   stock: z.string().optional(),
+  // Fashion sizes (JSON-encoded string[]) and Food menu section — read
+  // only when the tenant's category calls for them; see product-form.tsx.
+  sizes: z.string().optional(),
+  section: z.string().trim().max(60).optional(),
 });
 
 export async function addProduct(tenantSlug: string, formData: FormData) {
@@ -31,6 +35,8 @@ export async function addProduct(tenantSlug: string, formData: FormData) {
     name: formData.get("name"),
     priceGhs: formData.get("priceGhs"),
     stock: formData.get("stock") ?? undefined,
+    sizes: formData.get("sizes") ?? undefined,
+    section: formData.get("section") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -43,12 +49,26 @@ export async function addProduct(tenantSlug: string, formData: FormData) {
 
   const stockValue = parsed.data.stock ? Number.parseInt(parsed.data.stock, 10) : null;
 
+  const attributes: Record<string, unknown> = {};
+  if (parsed.data.sizes) {
+    try {
+      const sizes = JSON.parse(parsed.data.sizes);
+      if (Array.isArray(sizes) && sizes.every((s) => typeof s === "string") && sizes.length > 0) {
+        attributes.sizes = sizes;
+      }
+    } catch {
+      // Malformed sizes payload — silently drop rather than fail the whole save.
+    }
+  }
+  if (parsed.data.section) attributes.section = parsed.data.section;
+
   await db.insert(products).values({
     tenantId: tenant.id,
     name: parsed.data.name,
     priceCents: Math.round(parsed.data.priceGhs * 100),
     images: photoUrl ? [photoUrl] : [],
     stock: stockValue !== null && Number.isFinite(stockValue) ? stockValue : null,
+    attributes,
   });
 
   revalidatePath(`/my/${tenantSlug}`);

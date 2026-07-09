@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getActiveProductsForTenant, getTenantBySlug, CATEGORY_LABELS } from "@/lib/tenants";
 import { darkShade, lightTint } from "@/lib/color";
+import ProductGrid from "@/components/storefront/ProductGrid";
+import FoodMenu from "@/components/storefront/FoodMenu";
 
 export default async function StorefrontPage({
   params,
@@ -50,32 +52,10 @@ export default async function StorefrontPage({
       <main className="mx-auto max-w-5xl px-6 py-8">
         {products.length === 0 ? (
           <p className="text-ink-muted">{`${tenant.businessName} hasn't added any products yet.`}</p>
+        ) : tenant.category === "food" ? (
+          <FoodMenu products={products} />
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="overflow-hidden rounded-lg border border-border bg-surface"
-              >
-                <div className="aspect-square bg-forest-tint">
-                  {product.images[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element -- local upload stand-in
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="h-full w-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="p-3">
-                  <p className="text-sm font-semibold text-ink">{product.name}</p>
-                  <p className="text-sm font-bold text-forest">
-                    GHS {(product.priceCents / 100).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ProductGrid products={products} showSizes={tenant.category === "fashion"} />
         )}
       </main>
     </div>

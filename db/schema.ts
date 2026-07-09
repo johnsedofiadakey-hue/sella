@@ -225,3 +225,7 @@ export const kycDocuments = pgTable("kyc_documents", {
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("kyc_documents_tenant_idx").on(t.tenantId)]);
+
+export type Tenant = typeof tenants.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type Order = typeof orders.$inferSelect;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireTenantMember } from "@/lib/authz";
 import { getAllProductsForTenant } from "@/lib/tenants";
+import { getMenuSection, getSizes } from "@/lib/product-attributes";
 import { toggleProductActive, deleteProduct } from "./actions";
 
 export default async function StoreDashboard({
@@ -62,6 +63,12 @@ export default async function StoreDashboard({
               <div className="flex-1">
                 <p className="font-semibold text-ink">{product.name}</p>
                 <p className="text-sm text-forest">GHS {(product.priceCents / 100).toFixed(2)}</p>
+                {tenant.category === "fashion" && getSizes(product).length > 0 && (
+                  <p className="text-xs text-ink-muted">{getSizes(product).join(", ")}</p>
+                )}
+                {tenant.category === "food" && (
+                  <p className="text-xs text-ink-muted">{getMenuSection(product)}</p>
+                )}
                 {!product.isActive && (
                   <p className="text-xs text-ink-muted">Hidden from your store</p>
                 )}
