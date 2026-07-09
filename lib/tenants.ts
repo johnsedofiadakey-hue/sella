@@ -23,17 +23,7 @@ export async function getAllProductsForTenant(tenantId: string) {
   });
 }
 
-// Human-readable label for the category enum — Part 1 §4's eight verticals,
-// plus laundry from Part 2 §4. Vertical-specific layouts land per template
-// as the storefront build reaches them (Part 5, Months 2-3 and 5-8).
-export const CATEGORY_LABELS: Record<string, string> = {
-  general_retail: "General Retail",
-  fashion: "Fashion & Clothing",
-  food: "Food & Restaurant",
-  automobile: "Automobile",
-  groceries: "Groceries & Fresh Produce",
-  electronics: "Electronics & Phones",
-  beauty_services: "Beauty, Salon & Services",
-  digital_products: "Digital Products & Courses",
-  laundry: "Laundry & Home Services",
-};
+// Re-exported for existing call sites — the data itself lives in
+// lib/categories.ts (no "server-only", so client components like the
+// create-store form and the marketing site can import it directly).
+export { CATEGORY_LABELS } from "./categories";

@@ -1,11 +1,21 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { Suspense, useState, useTransition, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { requestLoginCode, verifyLoginCode } from "../actions";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(searchParams.get("phone") ?? "");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

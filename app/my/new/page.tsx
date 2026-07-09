@@ -1,22 +1,21 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { Suspense, useState, useTransition, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { createStore } from "../actions";
-
-// Part 1 §4's eight launch verticals, plus laundry from Part 2 §4.
-const CATEGORIES = [
-  { value: "general_retail", label: "General Retail" },
-  { value: "fashion", label: "Fashion & Clothing" },
-  { value: "food", label: "Food & Restaurant" },
-  { value: "automobile", label: "Automobile" },
-  { value: "groceries", label: "Groceries & Fresh Produce" },
-  { value: "electronics", label: "Electronics & Phones" },
-  { value: "beauty_services", label: "Beauty, Salon & Services" },
-  { value: "digital_products", label: "Digital Products & Courses" },
-  { value: "laundry", label: "Laundry & Home Services" },
-];
+import { CATEGORIES } from "@/lib/categories";
 
 export default function NewStorePage() {
+  return (
+    <Suspense>
+      <NewStoreForm />
+    </Suspense>
+  );
+}
+
+function NewStoreForm() {
+  const searchParams = useSearchParams();
+  const preselectedCategory = searchParams.get("category") ?? "";
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -52,7 +51,7 @@ export default function NewStorePage() {
         <select
           name="category"
           required
-          defaultValue=""
+          defaultValue={preselectedCategory}
           className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
         >
           <option value="" disabled>
