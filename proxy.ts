@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { RESERVED_SLUGS, SUBDOMAIN_ROUTES } from "@/lib/reserved-slugs";
 
 // Part 2 §1: one wildcard domain, no per-store DNS work. A request to
 // amasfashion.shoplocal.app is resolved here to /store/amasfashion. The
@@ -6,33 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 // stays a pure routing decision regardless of which runtime Proxy uses.
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN ?? "shoplocal.app";
 
-// Names no merchant can claim: platform surfaces and obvious impersonation risk.
-const RESERVED_SLUGS = new Set([
-  "www",
-  "app",
-  "api",
-  "admin",
-  "mission-control",
-  "my",
-  "shoplocal",
-  "stormglide",
-  "assets",
-  "static",
-  "cdn",
-  "mail",
-  "support",
-  "help",
-  "status",
-  "blog",
-  "store",
-]);
-
 function slugFromHostname(hostname: string): string | null {
   if (hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}`) return null;
   if (!hostname.endsWith(`.${ROOT_DOMAIN}`)) return null;
 
   const slug = hostname.slice(0, -(`.${ROOT_DOMAIN}`.length));
-  if (!slug || slug.includes(".") || RESERVED_SLUGS.has(slug)) return null;
+  if (!slug || slug.includes(".")) return null;
   return slug;
 }
 
@@ -45,11 +25,25 @@ export function proxy(req: NextRequest) {
     ? searchParams.get("store") // dev fallback: http://localhost:3000/?store=amas-fashion
     : slugFromHostname(hostname);
 
-  if (!slug || RESERVED_SLUGS.has(slug)) {
-    return NextResponse.next();
-  }
+  if (!slug) return NextResponse.next();
 
   const headers = new Headers(req.headers);
+
+  // Fixed internal surfaces (the merchant portal today, Mission Control
+  // later) live at a subdomain but aren't tenant stores — route by prefix,
+  // no x-tenant-slug header.
+  const internalPrefix = SUBDOMAIN_ROUTES[slug];
+  if (internalPrefix) {
+    if (pathname.startsWith(internalPrefix) || pathname.startsWith("/api")) {
+      return NextResponse.next({ request: { headers } });
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `${internalPrefix}${pathname}`;
+    return NextResponse.rewrite(url, { request: { headers } });
+  }
+
+  if (RESERVED_SLUGS.has(slug)) return NextResponse.next();
+
   headers.set("x-tenant-slug", slug);
 
   // API routes and anything already under /store resolve the tenant from the

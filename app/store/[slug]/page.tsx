@@ -31,9 +31,7 @@ export default async function StorefrontPage({
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         {products.length === 0 ? (
-          <p className="text-ink-muted">
-            {tenant.businessName} hasn&apos;t added any products yet.
-          </p>
+          <p className="text-ink-muted">{`${tenant.businessName} hasn't added any products yet.`}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {products.map((product) => (
