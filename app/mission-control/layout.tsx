@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db, kycDocuments } from "@/db";
 import { requireStaff } from "@/lib/authz";
+import { isEscalated, isResolved } from "@/lib/disputes";
 
 // Part 6 §5.4: Mission Control reuses the same brand tokens and component
 // library as every other surface, but denser and quieter — this is the
@@ -16,6 +17,8 @@ export default async function MissionControlLayout({
   const pendingKyc = await db.query.kycDocuments.findMany({
     where: eq(kycDocuments.status, "pending"),
   });
+  const allDisputes = await db.query.disputes.findMany();
+  const escalatedDisputes = allDisputes.filter((d) => !isResolved(d) && isEscalated(d));
 
   return (
     <div className="flex-1 bg-paper">
@@ -31,6 +34,9 @@ export default async function MissionControlLayout({
             </Link>
             <Link href="/mission-control/kyc" className="hover:text-ink">
               KYC{pendingKyc.length > 0 ? ` · ${pendingKyc.length}` : ""}
+            </Link>
+            <Link href="/mission-control/disputes" className="hover:text-ink">
+              Disputes{escalatedDisputes.length > 0 ? ` · ${escalatedDisputes.length}` : ""}
             </Link>
           </nav>
         </div>

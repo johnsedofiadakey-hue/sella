@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { db, orders } from "@/db";
+import { db, orders, disputes } from "@/db";
 import { requireTenantMember } from "@/lib/authz";
 import { verifySecret } from "@/lib/crypto";
 
@@ -83,5 +83,64 @@ export async function markDelivered(slug: string, orderId: string, otp: string) 
       updatedAt: new Date(),
     })
     .where(eq(orders.id, orderId));
+  revalidatePath(`/my/${slug}/orders`);
+}
+
+// Part 2 §6: the merchant's 48h window to resolve directly or contest.
+// Resolving directly closes the dispute outright; contesting escalates to
+// Mission Control rather than closing anything.
+export async function resolveDisputeAsMerchant(
+  slug: string,
+  disputeId: string,
+  resolutionType: "refund" | "replacement",
+) {
+  const { tenant } = await requireTenantMember(slug);
+
+  const dispute = await db.query.disputes.findFirst({
+    where: and(eq(disputes.id, disputeId), eq(disputes.tenantId, tenant.id)),
+  });
+  if (!dispute) return { error: "Dispute not found." };
+
+  const status = resolutionType === "refund" ? "resolved_refund" : "resolved_replacement";
+  await db
+    .update(disputes)
+    .set({
+      status,
+      resolution:
+        resolutionType === "refund" ? "Refunded by seller" : "Replacement agreed by seller",
+      resolvedAt: new Date(),
+    })
+    .where(eq(disputes.id, disputeId));
+
+  if (resolutionType === "refund") {
+    // Real Paystack-paid orders would call the Refunds API here (Part 2
+    // §2) — dormant until live credentials exist, same as checkout.
+    await db
+      .update(orders)
+      .set({ paymentStatus: "refunded", updatedAt: new Date() })
+      .where(eq(orders.id, dispute.orderId));
+  }
+
+  revalidatePath(`/my/${slug}/orders`);
+}
+
+export async function contestDispute(slug: string, disputeId: string, response: string) {
+  const { tenant } = await requireTenantMember(slug);
+  if (!response.trim()) return { error: "Enter your response." };
+
+  const dispute = await db.query.disputes.findFirst({
+    where: and(eq(disputes.id, disputeId), eq(disputes.tenantId, tenant.id)),
+  });
+  if (!dispute) return { error: "Dispute not found." };
+
+  await db
+    .update(disputes)
+    .set({
+      status: "escalated",
+      merchantResponse: response.trim(),
+      merchantRespondedAt: new Date(),
+    })
+    .where(eq(disputes.id, disputeId));
+
   revalidatePath(`/my/${slug}/orders`);
 }

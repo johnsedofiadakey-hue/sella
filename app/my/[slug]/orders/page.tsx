@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { requireTenantMember } from "@/lib/authz";
-import { db, orders } from "@/db";
+import { db, orders, disputes } from "@/db";
 import OrderRow from "./order-row";
 
 export default async function OrdersPage({
@@ -17,6 +17,12 @@ export default async function OrdersPage({
     orderBy: [desc(orders.createdAt)],
   });
 
+  const tenantDisputes = await db.query.disputes.findMany({
+    where: eq(disputes.tenantId, tenant.id),
+    orderBy: [desc(disputes.createdAt)],
+  });
+  const disputeByOrderId = new Map(tenantDisputes.map((d) => [d.orderId, d]));
+
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
       <Link href={`/my/${slug}`} className="text-xs text-ink-muted underline">
@@ -29,7 +35,12 @@ export default async function OrdersPage({
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
           {list.map((order) => (
-            <OrderRow key={order.id} slug={slug} order={order} />
+            <OrderRow
+              key={order.id}
+              slug={slug}
+              order={order}
+              dispute={disputeByOrderId.get(order.id)}
+            />
           ))}
         </ul>
       )}

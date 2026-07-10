@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Order } from "@/db/schema";
-import { assignRider, confirmOrder, markDelivered, markPickedUp } from "./actions";
+import type { Dispute, Order } from "@/db/schema";
+import { isEscalated, isResolved, DISPUTE_REASON_LABELS } from "@/lib/disputes";
+import {
+  assignRider,
+  confirmOrder,
+  contestDispute,
+  markDelivered,
+  markPickedUp,
+  resolveDisputeAsMerchant,
+} from "./actions";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "New",
@@ -14,11 +22,20 @@ const STATUS_LABELS: Record<string, string> = {
   disputed: "Disputed",
 };
 
-export default function OrderRow({ slug, order }: { slug: string; order: Order }) {
-  const [mode, setMode] = useState<"idle" | "assign-rider" | "enter-otp">("idle");
+export default function OrderRow({
+  slug,
+  order,
+  dispute,
+}: {
+  slug: string;
+  order: Order;
+  dispute: Dispute | undefined;
+}) {
+  const [mode, setMode] = useState<"idle" | "assign-rider" | "enter-otp" | "contest">("idle");
   const [riderName, setRiderName] = useState("");
   const [riderPhone, setRiderPhone] = useState("");
   const [otp, setOtp] = useState("");
+  const [response, setResponse] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -58,6 +75,27 @@ export default function OrderRow({ slug, order }: { slug: string; order: Order }
     });
   }
 
+  function handleResolve(resolutionType: "refund" | "replacement") {
+    if (!dispute) return;
+    setError(null);
+    startTransition(async () => {
+      await resolveDisputeAsMerchant(slug, dispute.id, resolutionType);
+    });
+  }
+
+  function handleContest() {
+    if (!dispute) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await contestDispute(slug, dispute.id, response);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setMode("idle");
+    });
+  }
+
   return (
     <li className="rounded-lg border border-border bg-surface p-3">
       <div className="flex items-center justify-between gap-3">
@@ -86,6 +124,88 @@ export default function OrderRow({ slug, order }: { slug: string; order: Order }
       )}
 
       {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+
+      {dispute && (
+        <div className="mt-3 rounded-md border border-danger bg-forest-tint p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-danger">
+            {isResolved(dispute)
+              ? "Resolved"
+              : isEscalated(dispute)
+                ? "Escalated to ShopLocal"
+                : "Buyer reported a problem"}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-ink">
+            {DISPUTE_REASON_LABELS[dispute.reason] ?? dispute.reason}
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">{dispute.description}</p>
+          {!isResolved(dispute) && !isEscalated(dispute) && (
+            <p className="mt-1 text-xs text-ink-muted">
+              Respond by{" "}
+              {dispute.respondByAt.toLocaleString("en-GB", {
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+          {dispute.merchantResponse && (
+            <p className="mt-2 text-xs text-ink-muted">Your response: {dispute.merchantResponse}</p>
+          )}
+          {dispute.resolution && (
+            <p className="mt-2 text-xs font-semibold text-ink">Outcome: {dispute.resolution}</p>
+          )}
+
+          {!isResolved(dispute) && dispute.status !== "escalated" && mode !== "contest" && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleResolve("refund")}
+                disabled={isPending}
+                className="rounded-full bg-forest px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                Refund
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResolve("replacement")}
+                disabled={isPending}
+                className="rounded-full bg-forest px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("contest")}
+                disabled={isPending}
+                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
+              >
+                Contest
+              </button>
+            </div>
+          )}
+
+          {mode === "contest" && (
+            <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
+              <textarea
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+                rows={3}
+                placeholder="Evidence or explanation for ShopLocal to review"
+                className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-forest"
+              />
+              <button
+                type="button"
+                onClick={handleContest}
+                disabled={isPending}
+                className="self-start rounded-full bg-forest px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+              >
+                {isPending ? "Submitting…" : "Submit to ShopLocal"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {order.status === "pending" && (

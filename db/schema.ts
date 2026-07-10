@@ -83,6 +83,25 @@ export const kycStatusEnum = pgEnum("kyc_status", ["pending", "approved", "rejec
 
 export const otpPurposeEnum = pgEnum("otp_purpose", ["signup", "login"]);
 
+// Order-dispute flow per Part 2 §6 — "basic disputes" scope from Part 4's
+// MVP cut (payment disputes via Paystack chargebacks and platform disputes
+// are out of scope here; both need infrastructure that doesn't exist yet).
+export const disputeStatusEnum = pgEnum("dispute_status", [
+  "open",
+  "escalated",
+  "resolved_refund",
+  "resolved_replacement",
+  "resolved_rejected",
+]);
+
+export const disputeReasonEnum = pgEnum("dispute_reason", [
+  "not_received",
+  "not_as_described",
+  "wrong_item",
+  "refund_refused",
+  "other",
+]);
+
 // ---- Users & auth ------------------------------------------------------
 // Phone is the identity anchor (Part 2 §8) — email is never required.
 export const users = pgTable("users", {
@@ -206,6 +225,30 @@ export const orderItems = pgTable("order_items", {
   variant: jsonb("variant").$type<Record<string, unknown>>().notNull().default({}),
 }, (t) => [index("order_items_order_idx").on(t.orderId)]);
 
+// Buyer opens with reason + description; merchant has 48h (respondByAt) to
+// resolve directly or contest — contesting (or letting the clock run out)
+// escalates to Mission Control's queue. "Escalated" is also computed
+// lazily wherever respondByAt has passed, same pattern as billing phases —
+// no cron flips this row, the read path just treats it as overdue.
+export const disputes = pgTable("disputes", {
+  id: id(),
+  orderId: text("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  reason: disputeReasonEnum("reason").notNull(),
+  description: text("description").notNull(),
+  status: disputeStatusEnum("status").notNull().default("open"),
+  merchantResponse: text("merchant_response"),
+  merchantRespondedAt: timestamp("merchant_responded_at", { withTimezone: true }),
+  resolution: text("resolution"),
+  resolvedBy: text("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  respondByAt: timestamp("respond_by_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("disputes_tenant_idx").on(t.tenantId),
+  index("disputes_order_idx").on(t.orderId),
+]);
+
 // ---- Billing -----------------------------------------------------------
 // One active row per tenant; 30-day trial then MoMo subscription (Part 3 §1, Part 4 §3.3).
 export const subscriptions = pgTable("subscriptions", {
@@ -238,3 +281,4 @@ export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type KycDocument = typeof kycDocuments.$inferSelect;
+export type Dispute = typeof disputes.$inferSelect;
