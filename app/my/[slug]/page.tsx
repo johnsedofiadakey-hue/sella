@@ -68,6 +68,9 @@ export default async function StoreDashboard({
           <Link href={`/my/${slug}/payouts`} className="text-sm font-semibold text-forest">
             Payouts
           </Link>
+          <Link href={`/my/${slug}/verification`} className="text-sm font-semibold text-forest">
+            Verification
+          </Link>
           <Link href={`/my/${slug}/billing`} className="text-sm font-semibold text-forest">
             Billing
           </Link>

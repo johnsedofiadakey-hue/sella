@@ -2,9 +2,10 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, tenants } from "@/db";
+import { db, tenants, kycDocuments } from "@/db";
 import { requireTenantMember } from "@/lib/authz";
 import { createSubaccount, resolveAccountNumber } from "@/lib/paystack";
+import { KYC_LEVEL_BY_DOC_TYPE } from "@/lib/kyc";
 
 // Part 2 §3's "MoMo wallet name match" — resolves the account before
 // anything is linked, so a mistyped number surfaces immediately instead
@@ -37,11 +38,25 @@ export async function linkPayout(slug: string, formData: FormData) {
     const { subaccountCode } = await createSubaccount({ businessName, bankCode, accountNumber });
     await db
       .update(tenants)
-      .set({ paystackSubaccountCode: subaccountCode, updatedAt: new Date() })
+      .set({
+        paystackSubaccountCode: subaccountCode,
+        kycLevel: Math.max(tenant.kycLevel, KYC_LEVEL_BY_DOC_TYPE.momo_match),
+        updatedAt: new Date(),
+      })
       .where(eq(tenants.id, tenant.id));
+
+    // Paystack's resolveAccountNumber call already did the name match
+    // (Part 2 §3) — record it as system-approved, no staff review needed.
+    await db.insert(kycDocuments).values({
+      tenantId: tenant.id,
+      type: "momo_match",
+      status: "approved",
+      reviewedAt: new Date(),
+    });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not link payout account." };
   }
 
   revalidatePath(`/my/${slug}/payouts`);
+  revalidatePath(`/my/${slug}/verification`);
 }

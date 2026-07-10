@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { eq } from "drizzle-orm";
+import { db, kycDocuments } from "@/db";
 import { requireStaff } from "@/lib/authz";
 
 // Part 6 §5.4: Mission Control reuses the same brand tokens and component
@@ -11,6 +13,10 @@ export default async function MissionControlLayout({
 }) {
   await requireStaff();
 
+  const pendingKyc = await db.query.kycDocuments.findMany({
+    where: eq(kycDocuments.status, "pending"),
+  });
+
   return (
     <div className="flex-1 bg-paper">
       <header className="border-b border-border bg-surface px-6 py-3">
@@ -22,6 +28,9 @@ export default async function MissionControlLayout({
             </Link>
             <Link href="/mission-control/tenants" className="hover:text-ink">
               Tenants
+            </Link>
+            <Link href="/mission-control/kyc" className="hover:text-ink">
+              KYC{pendingKyc.length > 0 ? ` · ${pendingKyc.length}` : ""}
             </Link>
           </nav>
         </div>

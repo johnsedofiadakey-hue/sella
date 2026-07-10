@@ -237,3 +237,4 @@ export type Tenant = typeof tenants.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+export type KycDocument = typeof kycDocuments.$inferSelect;
