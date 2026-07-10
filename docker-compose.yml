@@ -11,5 +11,18 @@ services:
     volumes:
       - shoplocal_db:/var/lib/postgresql/data
 
+  # Part 3 §2's self-hosted monitoring leg — polls /api/health (see
+  # app/api/health/route.ts) and pages on failure. Not started by default
+  # locally (`docker compose up db` only); bring it up alongside the app
+  # on the VPS with `docker compose up -d`.
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - shoplocal_uptime_kuma:/app/data
+
 volumes:
   shoplocal_db:
+  shoplocal_uptime_kuma:

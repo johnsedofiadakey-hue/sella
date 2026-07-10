@@ -54,7 +54,9 @@ export const orderStatusEnum = pgEnum("order_status", [
   "disputed",
 ]);
 
-export const fulfillmentTypeEnum = pgEnum("fulfillment_type", ["pickup", "delivery"]);
+// "instant" is Digital Products & Courses (Part 1 §4) — payment triggers a
+// download link, never a rider or a pickup slot.
+export const fulfillmentTypeEnum = pgEnum("fulfillment_type", ["pickup", "delivery", "instant"]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -100,6 +102,20 @@ export const disputeReasonEnum = pgEnum("dispute_reason", [
   "wrong_item",
   "refund_refused",
   "other",
+]);
+
+// Automobile's buying flow per Part 1 §4: "enquiry & lead-gen, not cart."
+// A lead never becomes an order — there's no payment or fulfillment to track.
+export const enquiryStatusEnum = pgEnum("enquiry_status", ["new", "contacted", "closed"]);
+
+// Beauty, Salon & Services per Part 1 §4: "booking, not shipping." Kept
+// separate from orders for the same reason enquiries are — no cart, no
+// delivery, a different lifecycle (requested → confirmed → completed).
+export const bookingStatusEnum = pgEnum("booking_status", [
+  "requested",
+  "confirmed",
+  "completed",
+  "cancelled",
 ]);
 
 // ---- Users & auth ------------------------------------------------------
@@ -225,6 +241,64 @@ export const orderItems = pgTable("order_items", {
   variant: jsonb("variant").$type<Record<string, unknown>>().notNull().default({}),
 }, (t) => [index("order_items_order_idx").on(t.orderId)]);
 
+// ---- Rider book -----------------------------------------------------------
+// Part 2 §4 / Part 4 §2: the merchant saves a rider's name and phone once,
+// then assigns with one tap on any later order, instead of retyping it
+// every time (which is all assignRider did before this table existed).
+export const riders = pgTable("riders", {
+  id: id(),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("riders_tenant_idx").on(t.tenantId),
+  uniqueIndex("riders_tenant_phone_idx").on(t.tenantId, t.phone),
+]);
+
+// ---- Automobile enquiries -------------------------------------------------
+// Part 1 §4: listings, not a cart. A buyer leaves contact details against a
+// listing; nothing here ever touches payments or fulfillment.
+export const enquiries = pgTable("enquiries", {
+  id: id(),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  productId: text("product_id").references(() => products.id, { onDelete: "set null" }),
+  buyerName: text("buyer_name").notNull(),
+  buyerPhone: text("buyer_phone").notNull(),
+  message: text("message"),
+  status: enquiryStatusEnum("status").notNull().default("new"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("enquiries_tenant_idx").on(t.tenantId)]);
+
+// ---- Beauty/Services bookings ----------------------------------------------
+// Part 1 §4: booking, not shipping. Deliberately no staff-selection or
+// deposit-collection columns yet (Part 1 lists both as template features) —
+// those need a calendar/slot-capacity model this cut doesn't build; a
+// single requested time per booking is the v1 scope.
+export const bookings = pgTable("bookings", {
+  id: id(),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  productId: text("product_id").references(() => products.id, { onDelete: "set null" }),
+  buyerName: text("buyer_name").notNull(),
+  buyerPhone: text("buyer_phone").notNull(),
+  scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+  status: bookingStatusEnum("status").notNull().default("requested"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("bookings_tenant_idx").on(t.tenantId)]);
+
+// ---- Store visits (self-hosted analytics) ---------------------------------
+// Part 3 §2 calls for self-hosted Plausible/Umami so merchants see visit
+// stats without a per-event bill. Standing up a separate analytics service
+// is out of scope for this cut, but the number merchants actually care
+// about (Part 3 §1: "your store had 214 visits and 9 orders this month")
+// only needs a row per storefront view — same "real, checkable, no
+// external dependency" rule lib/metrics.ts already follows.
+export const storeVisits = pgTable("store_visits", {
+  id: id(),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("store_visits_tenant_idx").on(t.tenantId, t.createdAt)]);
+
 // Buyer opens with reason + description; merchant has 48h (respondByAt) to
 // resolve directly or contest — contesting (or letting the clock run out)
 // escalates to Mission Control's queue. "Escalated" is also computed
@@ -282,3 +356,6 @@ export type Order = typeof orders.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type KycDocument = typeof kycDocuments.$inferSelect;
 export type Dispute = typeof disputes.$inferSelect;
+export type Rider = typeof riders.$inferSelect;
+export type Enquiry = typeof enquiries.$inferSelect;
+export type Booking = typeof bookings.$inferSelect;

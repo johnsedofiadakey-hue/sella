@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
-import { db, orders, orderItems, tenants, disputes } from "@/db";
+import { desc, eq, inArray } from "drizzle-orm";
+import { db, orders, orderItems, tenants, disputes, products } from "@/db";
 import { isEscalated, isResolved, DISPUTE_REASON_LABELS } from "@/lib/disputes";
+import { getFileUrl } from "@/lib/product-attributes";
 
 // The dispute path replaces this happy-path timeline entirely (see below)
 // rather than trying to fold "disputed" in as a fifth step — Part 2 §6's
@@ -33,6 +34,17 @@ export default async function TrackOrderPage({
     where: eq(disputes.orderId, order.id),
     orderBy: [desc(disputes.createdAt)],
   });
+
+  const isInstant = order.fulfillmentType === "instant";
+  let downloadsByProductId = new Map<string, string>();
+  if (isInstant && order.paymentStatus === "paid") {
+    const productIds = items.map((item) => item.productId).filter((id): id is string => Boolean(id));
+    const relatedProducts =
+      productIds.length > 0 ? await db.query.products.findMany({ where: inArray(products.id, productIds) }) : [];
+    downloadsByProductId = new Map(
+      relatedProducts.map((p) => [p.id, getFileUrl(p)]).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+  }
 
   const currentIndex = STATUS_STEPS.findIndex((step) => step.key === order.status);
 
@@ -78,6 +90,32 @@ export default async function TrackOrderPage({
           )}
           {dispute.resolution && (
             <p className="mt-2 text-xs font-semibold text-ink">Outcome: {dispute.resolution}</p>
+          )}
+        </div>
+      ) : isInstant ? (
+        <div className="mt-6">
+          {order.paymentStatus === "paid" ? (
+            <div className="rounded-lg border border-success bg-forest-tint p-4">
+              <p className="text-sm font-semibold text-success">Paid — your downloads are ready</p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {items.map((item) => {
+                  const url = item.productId ? downloadsByProductId.get(item.productId) : undefined;
+                  return url ? (
+                    <li key={item.id}>
+                      <a
+                        href={url}
+                        className="text-sm font-semibold text-forest underline"
+                        download
+                      >
+                        Download: {item.nameSnapshot}
+                      </a>
+                    </li>
+                  ) : null;
+                })}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-ink-muted">Awaiting payment confirmation…</p>
           )}
         </div>
       ) : (

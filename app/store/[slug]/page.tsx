@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { getActiveProductsForTenant, getTenantBySlug, getSubscriptionForTenant, CATEGORY_LABELS } from "@/lib/tenants";
 import { darkShade, lightTint } from "@/lib/color";
 import { getCart } from "@/lib/cart";
 import { getBillingState } from "@/lib/billing";
+import { recordStoreVisit } from "@/lib/analytics";
 import ProductGrid from "@/components/storefront/ProductGrid";
 import FoodMenu from "@/components/storefront/FoodMenu";
+import ListingGrid from "@/components/storefront/ListingGrid";
+
+// Automobile and Beauty/Services are enquiry/booking verticals — no cart
+// at all (Part 1 §4), so the cart link in the header only makes sense
+// for every other category.
+const NO_CART_CATEGORIES = new Set(["automobile", "beauty_services"]);
 
 export default async function StorefrontPage({
   params,
@@ -15,6 +23,10 @@ export default async function StorefrontPage({
   const { slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) notFound();
+
+  // Recorded after the response is sent (Next's `after`) so a visit never
+  // adds latency to the page a buyer is waiting on.
+  after(() => recordStoreVisit(tenant.id));
 
   const subscription = await getSubscriptionForTenant(tenant.id);
   const billing = getBillingState(subscription);
@@ -67,12 +79,14 @@ export default async function StorefrontPage({
               </h1>
             </div>
           </div>
-          <Link
-            href={`/store/${slug}/cart`}
-            className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-sm"
-          >
-            Cart{cartCount > 0 ? ` · ${cartCount}` : ""}
-          </Link>
+          {!NO_CART_CATEGORIES.has(tenant.category) && (
+            <Link
+              href={`/store/${slug}/cart`}
+              className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-sm"
+            >
+              Cart{cartCount > 0 ? ` · ${cartCount}` : ""}
+            </Link>
+          )}
         </div>
         {(billing.phase === "trial" || billing.phase === "grace") && (
           <span className="mt-3 inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-gold-ink">
@@ -86,6 +100,10 @@ export default async function StorefrontPage({
           <p className="text-ink-muted">{`${tenant.businessName} hasn't added any products yet.`}</p>
         ) : tenant.category === "food" ? (
           <FoodMenu slug={slug} products={products} />
+        ) : tenant.category === "automobile" ? (
+          <ListingGrid slug={slug} products={products} mode="enquire" />
+        ) : tenant.category === "beauty_services" ? (
+          <ListingGrid slug={slug} products={products} mode="book" />
         ) : (
           <ProductGrid slug={slug} products={products} showSizes={tenant.category === "fashion"} />
         )}

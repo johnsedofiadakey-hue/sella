@@ -6,9 +6,11 @@ import { placeOrder } from "./actions";
 export default function CheckoutForm({
   slug,
   canPayWithPaystack,
+  isInstantDelivery,
 }: {
   slug: string;
   canPayWithPaystack: boolean;
+  isInstantDelivery: boolean;
 }) {
   const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
   // Paystack only ever appears as a choice once it's actually wired up —
@@ -48,47 +50,65 @@ export default function CheckoutForm({
         className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
       />
 
-      <div className="flex gap-2">
-        {(["delivery", "pickup"] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => setFulfillment(option)}
-            className={`flex-1 rounded-full border px-3 py-2 text-sm font-semibold capitalize ${
-              fulfillment === option
-                ? "border-forest bg-forest text-white"
-                : "border-border bg-surface text-ink-muted"
-            }`}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-      <input type="hidden" name="fulfillmentType" value={fulfillment} />
-
-      {fulfillment === "delivery" && (
+      {isInstantDelivery ? (
+        <input type="hidden" name="fulfillmentType" value="instant" />
+      ) : (
         <>
-          <input
-            name="deliveryArea"
-            required
-            placeholder="Area (e.g. Osu, Accra)"
-            className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
-          />
-          <input
-            name="deliveryLandmark"
-            required
-            placeholder="Landmark (e.g. blue kiosk opposite GCB bank)"
-            className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
-          />
-          <input
-            name="deliveryGpsCode"
-            placeholder="GhanaPost GPS code (optional)"
-            className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
-          />
+          <div className="flex gap-2">
+            {(["delivery", "pickup"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setFulfillment(option)}
+                className={`flex-1 rounded-full border px-3 py-2 text-sm font-semibold capitalize ${
+                  fulfillment === option
+                    ? "border-forest bg-forest text-white"
+                    : "border-border bg-surface text-ink-muted"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="fulfillmentType" value={fulfillment} />
+
+          {fulfillment === "delivery" && (
+            <>
+              <input
+                name="deliveryArea"
+                required
+                placeholder="Area (e.g. Osu, Accra)"
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
+              />
+              <input
+                name="deliveryLandmark"
+                required
+                placeholder="Landmark (e.g. blue kiosk opposite GCB bank)"
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
+              />
+              <input
+                name="deliveryGpsCode"
+                placeholder="GhanaPost GPS code (optional)"
+                className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
+              />
+            </>
+          )}
         </>
       )}
 
-      {canPayWithPaystack ? (
+      {isInstantDelivery ? (
+        canPayWithPaystack ? (
+          <div className="rounded-md border border-border bg-forest-tint p-3 text-sm text-forest-dark">
+            Pay by MoMo or card — instant delivery needs payment up front, so pay on delivery
+            isn&apos;t offered here.
+          </div>
+        ) : (
+          <div className="rounded-md border border-danger bg-forest-tint p-3 text-sm text-danger">
+            Card/MoMo payment isn&apos;t set up yet — digital products need payment before
+            delivery, so ordering isn&apos;t available right now.
+          </div>
+        )
+      ) : canPayWithPaystack ? (
         <div className="flex gap-2">
           <button
             type="button"
@@ -118,12 +138,16 @@ export default function CheckoutForm({
           Pay on delivery — cash or MoMo to your rider.
         </div>
       )}
-      <input type="hidden" name="paymentMethod" value={paymentMethod} />
+      <input
+        type="hidden"
+        name="paymentMethod"
+        value={isInstantDelivery ? "paystack" : paymentMethod}
+      />
 
       {error && <p className="text-sm text-danger">{error}</p>}
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || (isInstantDelivery && !canPayWithPaystack)}
         className="rounded-full bg-gold px-4 py-2.5 text-sm font-semibold text-gold-ink disabled:opacity-60"
       >
         {isPending ? "Placing order…" : "Place order"}

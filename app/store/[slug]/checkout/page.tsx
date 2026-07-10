@@ -57,6 +57,7 @@ export default async function CheckoutPage({
       <CheckoutForm
         slug={slug}
         canPayWithPaystack={isPaystackConfigured() && Boolean(tenant.paystackSubaccountCode)}
+        isInstantDelivery={tenant.category === "digital_products"}
       />
     </div>
   );

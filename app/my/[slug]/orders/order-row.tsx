@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Dispute, Order } from "@/db/schema";
+import type { Dispute, Order, Rider } from "@/db/schema";
 import { isEscalated, isResolved, DISPUTE_REASON_LABELS } from "@/lib/disputes";
 import {
   assignRider,
@@ -26,12 +26,15 @@ export default function OrderRow({
   slug,
   order,
   dispute,
+  savedRiders,
 }: {
   slug: string;
   order: Order;
   dispute: Dispute | undefined;
+  savedRiders: Rider[];
 }) {
   const [mode, setMode] = useState<"idle" | "assign-rider" | "enter-otp" | "contest">("idle");
+  const [selectedRiderId, setSelectedRiderId] = useState("");
   const [riderName, setRiderName] = useState("");
   const [riderPhone, setRiderPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -253,15 +256,41 @@ export default function OrderRow({
 
       {mode === "assign-rider" && (
         <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
+          {savedRiders.length > 0 && (
+            <select
+              value={selectedRiderId}
+              onChange={(e) => {
+                const riderId = e.target.value;
+                setSelectedRiderId(riderId);
+                const rider = savedRiders.find((r) => r.id === riderId);
+                setRiderName(rider?.name ?? "");
+                setRiderPhone(rider?.phone ?? "");
+              }}
+              className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-forest"
+            >
+              <option value="">Choose a saved rider…</option>
+              {savedRiders.map((rider) => (
+                <option key={rider.id} value={rider.id}>
+                  {rider.name} · {rider.phone}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             value={riderName}
-            onChange={(e) => setRiderName(e.target.value)}
+            onChange={(e) => {
+              setSelectedRiderId("");
+              setRiderName(e.target.value);
+            }}
             placeholder="Rider name"
             className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-forest"
           />
           <input
             value={riderPhone}
-            onChange={(e) => setRiderPhone(e.target.value)}
+            onChange={(e) => {
+              setSelectedRiderId("");
+              setRiderPhone(e.target.value);
+            }}
             placeholder="Rider phone"
             className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-forest"
           />

@@ -46,3 +46,6 @@ next-env.d.ts
 
 # local-disk image upload stand-in (lib/storage.ts) — swapped for R2 later
 /public/uploads
+
+# local fallback for scripts/backup.ts when R2 credentials aren't set
+/backups

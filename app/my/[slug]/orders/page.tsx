@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { requireTenantMember } from "@/lib/authz";
+import { getRidersForTenant } from "@/lib/riders";
 import { db, orders, disputes } from "@/db";
 import OrderRow from "./order-row";
 
@@ -22,6 +23,7 @@ export default async function OrdersPage({
     orderBy: [desc(disputes.createdAt)],
   });
   const disputeByOrderId = new Map(tenantDisputes.map((d) => [d.orderId, d]));
+  const savedRiders = await getRidersForTenant(tenant.id);
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
@@ -40,6 +42,7 @@ export default async function OrdersPage({
               slug={slug}
               order={order}
               dispute={disputeByOrderId.get(order.id)}
+              savedRiders={savedRiders}
             />
           ))}
         </ul>

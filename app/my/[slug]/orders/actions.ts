@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db, orders, disputes } from "@/db";
 import { requireTenantMember } from "@/lib/authz";
 import { verifySecret } from "@/lib/crypto";
+import { saveRider } from "@/lib/riders";
 
 // TODO: Meta WhatsApp Business Cloud API, per Part 4 §2 ("one-tap dispatch
 // ... the message IS the dispatch system"). Same console stand-in pattern
@@ -57,8 +58,13 @@ export async function assignRider(
     })
     .where(and(eq(orders.id, orderId), eq(orders.tenantId, tenant.id)));
 
+  // Every assignment saves to the rider book (Part 2 §4) — whether the
+  // merchant picked a saved rider or typed a new one, it's one tap next time.
+  await saveRider(tenant.id, riderName.trim(), riderPhone.trim());
+
   await dispatchToRider(riderPhone.trim(), orderId);
   revalidatePath(`/my/${slug}/orders`);
+  revalidatePath(`/my/${slug}/riders`);
 }
 
 // Proof-of-delivery per Part 4 §2 — the rider asks the buyer for the code

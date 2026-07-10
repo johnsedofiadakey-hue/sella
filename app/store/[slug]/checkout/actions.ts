@@ -13,7 +13,7 @@ import { initializeTransaction, isPaystackConfigured } from "@/lib/paystack";
 const checkoutSchema = z.object({
   buyerName: z.string().trim().min(2, "Enter your name."),
   buyerPhone: z.string().trim().min(6, "Enter a valid phone number."),
-  fulfillmentType: z.enum(["pickup", "delivery"]),
+  fulfillmentType: z.enum(["pickup", "delivery", "instant"]),
   deliveryArea: z.string().trim().optional(),
   deliveryLandmark: z.string().trim().optional(),
   deliveryGpsCode: z.string().trim().optional(),
@@ -39,6 +39,12 @@ export async function placeOrder(slug: string, formData: FormData) {
     parsed.data;
   if (fulfillmentType === "delivery" && (!deliveryArea || !deliveryLandmark)) {
     return { error: "Enter your area and a landmark for delivery." };
+  }
+  // Digital Products & Courses (Part 1 §4): "instant delivery" means the
+  // download link is the fulfillment — there's no rider or pickup to fall
+  // back to, so pay-on-delivery isn't a valid choice here at all.
+  if (fulfillmentType === "instant" && paymentMethod !== "paystack") {
+    return { error: "Digital products need payment before delivery." };
   }
   if (paymentMethod === "paystack" && !(isPaystackConfigured() && tenant.paystackSubaccountCode)) {
     return { error: "Card/MoMo payment isn't available right now — try pay on delivery." };

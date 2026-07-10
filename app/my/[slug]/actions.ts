@@ -6,7 +6,8 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db, products, tenants } from "@/db";
 import { requireTenantMember } from "@/lib/authz";
-import { saveUploadedImage } from "@/lib/storage";
+import { saveUploadedImage, saveUploadedFile } from "@/lib/storage";
+import { parseSpecsInput } from "@/lib/product-attributes";
 
 async function extractPhotoUrl(
   tenantId: string,
@@ -26,6 +27,12 @@ const productSchema = z.object({
   // only when the tenant's category calls for them; see product-form.tsx.
   sizes: z.string().optional(),
   section: z.string().trim().max(60).optional(),
+  unit: z.string().trim().max(20).optional(),
+  condition: z.string().trim().max(20).optional(),
+  warranty: z.string().trim().max(120).optional(),
+  specs: z.string().optional(),
+  priceOnRequest: z.string().optional(),
+  durationMins: z.string().optional(),
 });
 
 export async function addProduct(tenantSlug: string, formData: FormData) {
@@ -37,14 +44,28 @@ export async function addProduct(tenantSlug: string, formData: FormData) {
     stock: formData.get("stock") ?? undefined,
     sizes: formData.get("sizes") ?? undefined,
     section: formData.get("section") ?? undefined,
+    unit: formData.get("unit") ?? undefined,
+    condition: formData.get("condition") ?? undefined,
+    warranty: formData.get("warranty") ?? undefined,
+    specs: formData.get("specs") ?? undefined,
+    priceOnRequest: formData.get("priceOnRequest") ?? undefined,
+    durationMins: formData.get("durationMins") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   let photoUrl: string | null;
+  let fileUrl: string | null = null;
   try {
     photoUrl = await extractPhotoUrl(tenant.id, formData, "photo");
+    if (tenant.category === "digital_products") {
+      const file = formData.get("file");
+      if (!(file instanceof File) || file.size === 0) {
+        return { error: "Upload the file buyers will receive after payment." };
+      }
+      fileUrl = await saveUploadedFile(tenant.id, file);
+    }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not save photo." };
+    return { error: err instanceof Error ? err.message : "Could not save the upload." };
   }
 
   const stockValue = parsed.data.stock ? Number.parseInt(parsed.data.stock, 10) : null;
@@ -61,6 +82,19 @@ export async function addProduct(tenantSlug: string, formData: FormData) {
     }
   }
   if (parsed.data.section) attributes.section = parsed.data.section;
+  if (parsed.data.unit) attributes.unit = parsed.data.unit;
+  if (parsed.data.condition) attributes.condition = parsed.data.condition;
+  if (parsed.data.warranty) attributes.warranty = parsed.data.warranty;
+  if (parsed.data.specs) {
+    const specs = parseSpecsInput(parsed.data.specs);
+    if (specs.length > 0) attributes.specs = specs;
+  }
+  if (parsed.data.priceOnRequest === "true") attributes.priceOnRequest = true;
+  if (parsed.data.durationMins) {
+    const mins = Number.parseInt(parsed.data.durationMins, 10);
+    if (Number.isFinite(mins) && mins > 0) attributes.durationMins = mins;
+  }
+  if (fileUrl) attributes.fileUrl = fileUrl;
 
   await db.insert(products).values({
     tenantId: tenant.id,
