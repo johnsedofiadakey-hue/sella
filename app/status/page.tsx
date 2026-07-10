@@ -12,7 +12,7 @@ export default async function StatusPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6 py-16">
-      <h1 className="text-2xl font-bold text-forest-dark">ShopLocal status</h1>
+      <h1 className="text-2xl font-bold text-forest-dark">Sella status</h1>
 
       <div
         className={`mt-6 rounded-lg border px-4 py-3 ${

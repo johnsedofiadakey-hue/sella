@@ -112,7 +112,7 @@ export async function placeOrder(slug: string, formData: FormData) {
     let authorizationUrl: string;
     try {
       const transaction = await initializeTransaction({
-        email: `${parsed.data.buyerPhone.replace(/[^0-9]/g, "")}@buyer.shoplocal.app`,
+        email: `${parsed.data.buyerPhone.replace(/[^0-9]/g, "")}@buyer.sella.app`,
         amountPesewas: totalCents,
         reference: order.id,
         callbackUrl: `${origin}/store/${slug}/checkout/callback?orderId=${order.id}`,

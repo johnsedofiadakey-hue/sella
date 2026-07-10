@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { RESERVED_SLUGS, SUBDOMAIN_ROUTES } from "@/lib/reserved-slugs";
 
 // Part 2 §1: one wildcard domain, no per-store DNS work. A request to
-// amasfashion.shoplocal.app is resolved here to /store/amasfashion. The
+// amasfashion.sella.app is resolved here to /store/amasfashion. The
 // actual tenant lookup stays in the page/route rather than here, so this
 // stays a pure routing decision regardless of which runtime Proxy uses.
-const ROOT_DOMAIN = process.env.ROOT_DOMAIN ?? "shoplocal.app";
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN ?? "sella.app";
 
 function slugFromHostname(hostname: string): string | null {
   if (hostname === ROOT_DOMAIN || hostname === `www.${ROOT_DOMAIN}`) return null;

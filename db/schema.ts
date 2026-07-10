@@ -153,7 +153,7 @@ export const sessions = pgTable("sessions", {
 // every table below it, per Part 3 §2's "tenant_id on every row" rule.
 export const tenants = pgTable("tenants", {
   id: id(),
-  slug: text("slug").notNull(), // businessname.shoplocal.app
+  slug: text("slug").notNull(), // businessname.sella.app
   businessName: text("business_name").notNull(),
   category: tenantCategoryEnum("category").notNull(),
   tier: tenantTierEnum("tier").notNull().default("starter"),

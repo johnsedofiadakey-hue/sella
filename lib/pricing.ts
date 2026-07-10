@@ -8,7 +8,7 @@ export const PRICING_TIERS = [
     promoPrice: 466,
     annualPrice: 4660,
     highlighted: false,
-    features: ["Up to 25 products", "Subdomain store (yourname.shoplocal.app)", "MoMo + card checkout"],
+    features: ["Up to 25 products", "Subdomain store (yourname.sella.app)", "MoMo + card checkout"],
   },
   {
     key: "growth",
@@ -26,6 +26,6 @@ export const PRICING_TIERS = [
     promoPrice: 1866,
     annualPrice: 18660,
     highlighted: false,
-    features: ["Unlimited products", "Custom domain, no ShopLocal branding", "10 staff accounts with roles"],
+    features: ["Unlimited products", "Custom domain, no Sella branding", "10 staff accounts with roles"],
   },
 ] as const;

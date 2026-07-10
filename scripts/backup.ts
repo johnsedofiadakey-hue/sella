@@ -20,7 +20,7 @@ if (!DATABASE_URL) {
 
 function timestampedFilename(): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `shoplocal-${stamp}.sql.gz`;
+  return `sella-${stamp}.sql.gz`;
 }
 
 async function dumpToFile(databaseUrl: string, destPath: string): Promise<void> {

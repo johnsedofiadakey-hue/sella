@@ -71,7 +71,7 @@ export default async function BillingPage({
           <PayNowButton slug={slug} />
         ) : (
           <p className="mt-4 text-sm text-ink-muted">
-            Online payment isn&apos;t available yet — ShopLocal&apos;s payment provider account is
+            Online payment isn&apos;t available yet — Sella&apos;s payment provider account is
             still being set up.
           </p>
         ))}

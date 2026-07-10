@@ -7,7 +7,7 @@ export default function Home() {
     <div className="flex-1">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <span className="font-bold text-forest-dark">
-          Shop<span className="text-forest">Local</span>
+          Sella
         </span>
         <Link href="/my/login" className="text-xs text-ink-muted underline">
           Store owner login
@@ -128,11 +128,11 @@ export default function Home() {
         <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-semibold text-forest-dark">
-              Shop<span className="text-forest">Local</span>
+              Sella
             </p>
             <p className="mt-1 max-w-xs text-xs text-ink-muted">
-              Operated by StormGlide. Company registration and physical address are pending —
-              see the legal-foundation checklist in Part 3 §7.
+              Operated by StormGlide (stormglide.io). Company registration and physical address
+              are pending — see the legal-foundation checklist in Part 3 §7.
             </p>
           </div>
           <div className="flex flex-col gap-1 text-xs text-ink-muted">

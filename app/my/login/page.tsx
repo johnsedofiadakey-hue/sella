@@ -53,7 +53,7 @@ function LoginForm() {
     <div className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-          ShopLocal
+          Sella
         </p>
         <h1 className="mt-1 text-2xl font-bold text-forest-dark">
           {step === "phone" ? "Log in with your phone" : "Enter your code"}

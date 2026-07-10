@@ -76,7 +76,7 @@ export default async function TrackOrderPage({
             {isResolved(dispute)
               ? "Dispute resolved"
               : isEscalated(dispute)
-                ? "Escalated to ShopLocal"
+                ? "Escalated to Sella"
                 : "Dispute open — awaiting the seller"}
           </p>
           <p className="mt-1 text-sm font-semibold text-ink">

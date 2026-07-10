@@ -28,7 +28,7 @@ export async function payNow(slug: string) {
   let authorizationUrl: string;
   try {
     const transaction = await initializeTransaction({
-      email: `${session.user.phone.replace(/[^0-9]/g, "")}@merchant.shoplocal.app`,
+      email: `${session.user.phone.replace(/[^0-9]/g, "")}@merchant.sella.app`,
       amountPesewas: TIER_PRICE_PESEWAS[tier] ?? TIER_PRICE_PESEWAS.starter,
       // Prefixed so the webhook can tell a subscription payment apart from
       // an order payment (which uses the bare order id as its reference).

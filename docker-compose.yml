@@ -3,13 +3,13 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: shoplocal
-      POSTGRES_PASSWORD: shoplocal
-      POSTGRES_DB: shoplocal
+      POSTGRES_USER: sella
+      POSTGRES_PASSWORD: sella
+      POSTGRES_DB: sella
     ports:
       - "5433:5432"
     volumes:
-      - shoplocal_db:/var/lib/postgresql/data
+      - sella_db:/var/lib/postgresql/data
 
   # Part 3 §2's self-hosted monitoring leg — polls /api/health (see
   # app/api/health/route.ts) and pages on failure. Not started by default
@@ -21,8 +21,8 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - shoplocal_uptime_kuma:/app/data
+      - sella_uptime_kuma:/app/data
 
 volumes:
-  shoplocal_db:
-  shoplocal_uptime_kuma:
+  sella_db:
+  sella_uptime_kuma:

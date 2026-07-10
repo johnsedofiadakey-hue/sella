@@ -134,7 +134,7 @@ export default function OrderRow({
             {isResolved(dispute)
               ? "Resolved"
               : isEscalated(dispute)
-                ? "Escalated to ShopLocal"
+                ? "Escalated to Sella"
                 : "Buyer reported a problem"}
           </p>
           <p className="mt-1 text-sm font-semibold text-ink">
@@ -194,7 +194,7 @@ export default function OrderRow({
                 value={response}
                 onChange={(e) => setResponse(e.target.value)}
                 rows={3}
-                placeholder="Evidence or explanation for ShopLocal to review"
+                placeholder="Evidence or explanation for Sella to review"
                 className="rounded-md border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-forest"
               />
               <button
@@ -203,7 +203,7 @@ export default function OrderRow({
                 disabled={isPending}
                 className="self-start rounded-full bg-forest px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
               >
-                {isPending ? "Submitting…" : "Submit to ShopLocal"}
+                {isPending ? "Submitting…" : "Submit to Sella"}
               </button>
             </div>
           )}

@@ -33,7 +33,7 @@ export default async function PayoutsPage({
 
       {!paystackReady ? (
         <p className="mt-3 text-ink-muted">
-          Card and MoMo checkout aren&apos;t available yet — ShopLocal&apos;s payment provider
+          Card and MoMo checkout aren&apos;t available yet — Sella&apos;s payment provider
           account is still being set up. Pay on delivery works today.
         </p>
       ) : alreadyLinked ? (
@@ -46,7 +46,7 @@ export default async function PayoutsPage({
       ) : (
         <>
           <p className="mt-1 text-sm text-ink-muted">
-            Link the account your MoMo or card sales should pay into. ShopLocal never holds your
+            Link the account your MoMo or card sales should pay into. Sella never holds your
             money — Paystack settles directly to you.
           </p>
           <PayoutForm slug={slug} banks={banks} defaultBusinessName={tenant.businessName} />

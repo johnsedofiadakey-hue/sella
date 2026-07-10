@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ShopLocal — a real online store for your business",
+  title: "Sella — a real online store for your business",
   description:
     "A shared ecommerce platform that gives local businesses in Ghana a professional online store, built for how their category actually sells.",
 };

@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sella
+
+A shared multi-tenant ecommerce platform that gives local businesses in Ghana & West Africa a
+professional online store, built for how their category actually sells — cart checkout, booking,
+or enquiry, depending on the vertical. Operated by [StormGlide](https://stormglide.io).
+
+See the `Sella_*.docx` planning documents in this repo for the full concept, architecture, launch,
+and design plan.
 
 ## Getting Started
 
-First, run the development server:
+Copy `.env.example` to `.env.local` and start the local Postgres instance:
 
 ```bash
+docker compose up db -d
+npm install
+npm run db:push
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser. On localhost, storefronts
+resolve via `?store=<slug>` (e.g. `?store=amas-fashion`) rather than real subdomains — see
+`proxy.ts`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/` — the Next.js App Router monolith: marketing site (`/`), storefronts (`/store/[slug]`),
+  merchant portal (`/my/[slug]`), and staff tooling (`/mission-control`)
+- `db/schema.ts` — the multi-tenant Postgres schema (Drizzle ORM), `tenant_id` on every row
+- `lib/` — domain logic (billing, KYC, disputes, payments, analytics, etc.), kept out of route
+  files so it's shared between pages, server actions, and webhooks
+- `scripts/backup.ts` — nightly `pg_dump` → R2 backup job
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` / `build` / `start` — standard Next.js commands
+- `npm run db:push` — apply the Drizzle schema to Postgres
+- `npm run db:seed` — seed a sample tenant
+- `npm run db:backup` — run a database backup (see `scripts/backup.ts`)
+- `npm run db:studio` — Drizzle Studio, a GUI over the local database

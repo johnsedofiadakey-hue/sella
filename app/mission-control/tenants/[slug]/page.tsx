@@ -35,7 +35,7 @@ export default async function TenantDetailPage({
         <div>
           <h1 className="text-xl font-bold text-ink">{tenant.businessName}</h1>
           <p className="text-sm text-ink-muted">
-            {tenant.slug}.shoplocal.app · {CATEGORY_LABELS[tenant.category] ?? tenant.category}
+            {tenant.slug}.sella.app · {CATEGORY_LABELS[tenant.category] ?? tenant.category}
           </p>
         </div>
         {/* Read-only staff view for now — real impersonation (session

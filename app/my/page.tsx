@@ -21,7 +21,7 @@ export default async function PortalHome() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            ShopLocal portal
+            Sella portal
           </p>
           <h1 className="mt-1 text-2xl font-bold text-forest-dark">{session.user.phone}</h1>
         </div>
@@ -57,7 +57,7 @@ export default async function PortalHome() {
                 <p className="font-semibold text-ink">{tenant.businessName}</p>
                 <p className="text-sm text-ink-muted">
                   {CATEGORY_LABELS[tenant.category] ?? tenant.category} · {tenant.slug}
-                  .shoplocal.app
+                  .sella.app
                 </p>
               </div>
               <a

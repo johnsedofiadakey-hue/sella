@@ -8,7 +8,7 @@ export const RESERVED_SLUGS = new Set([
   "admin",
   "mission-control",
   "my",
-  "shoplocal",
+  "sella",
   "stormglide",
   "assets",
   "static",

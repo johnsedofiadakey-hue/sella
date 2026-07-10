@@ -72,7 +72,7 @@ export default async function StoreDashboard({
             ← Your stores
           </Link>
           <h1 className="mt-1 text-2xl font-bold text-forest-dark">{tenant.businessName}</h1>
-          <p className="text-sm text-ink-muted">{tenant.slug}.shoplocal.app</p>
+          <p className="text-sm text-ink-muted">{tenant.slug}.sella.app</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {tenant.category === ENQUIRY_CATEGORY ? (
