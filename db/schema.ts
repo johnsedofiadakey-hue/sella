@@ -89,6 +89,9 @@ export const users = pgTable("users", {
   id: id(),
   phone: text("phone").notNull(),
   passwordHash: text("password_hash"),
+  // Gates access to Mission Control (Part 2 §7). No invite UI yet — set by
+  // hand until there's an actual team beyond the founder to manage RBAC for.
+  isStaff: boolean("is_staff").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("users_phone_idx").on(t.phone)]);
 

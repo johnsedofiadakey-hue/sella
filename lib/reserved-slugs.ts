@@ -25,8 +25,8 @@ export const RESERVED_SLUGS = new Set([
 ]);
 
 // Subdomains that resolve to a fixed internal surface rather than a merchant
-// store. The portal (Part 2 §8) ships this week; Mission Control (Part 2 §7)
-// joins this map when it's built in Month 4 of the execution plan.
+// store — the portal (Part 2 §8) and Mission Control (Part 2 §7).
 export const SUBDOMAIN_ROUTES: Record<string, string> = {
   my: "/my",
+  "mission-control": "/mission-control",
 };

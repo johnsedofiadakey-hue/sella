@@ -22,3 +22,14 @@ export async function requireTenantMember(tenantSlug: string) {
 
   return { session, tenant, membership };
 }
+
+// Guards every /mission-control/* route. Staff log in through the exact
+// same phone-OTP flow as merchants (Part 2 §7: "one auth service") — this
+// only adds a check on top of that existing session, not a second login
+// system. Not staff 404s, same reasoning as requireTenantMember above.
+export async function requireStaff() {
+  const session = await getSession();
+  if (!session) redirect("/my/login");
+  if (!session.user.isStaff) notFound();
+  return { session };
+}
