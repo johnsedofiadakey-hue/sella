@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { eq, and } from "drizzle-orm";
 import { requireTenantMember } from "@/lib/authz";
-import { getAllProductsForTenant } from "@/lib/tenants";
+import { getAllProductsForTenant, getSubscriptionForTenant } from "@/lib/tenants";
 import { getMenuSection, getSizes } from "@/lib/product-attributes";
+import { getBillingState } from "@/lib/billing";
 import { db, orders } from "@/db";
 import { toggleProductActive, deleteProduct } from "./actions";
 
@@ -17,9 +18,38 @@ export default async function StoreDashboard({
   const pendingOrders = await db.query.orders.findMany({
     where: and(eq(orders.tenantId, tenant.id), eq(orders.status, "pending")),
   });
+  const subscription = await getSubscriptionForTenant(tenant.id);
+  const billing = getBillingState(subscription);
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
+      {billing.phase === "trial" && (
+        <div className="mb-4 rounded-lg border border-border bg-forest-tint px-4 py-2.5 text-sm text-forest-dark">
+          {billing.daysRemaining} day{billing.daysRemaining === 1 ? "" : "s"} left in your free
+          trial.{" "}
+          <Link href={`/my/${slug}/billing`} className="font-semibold underline">
+            View billing
+          </Link>
+        </div>
+      )}
+      {billing.phase === "grace" && (
+        <div className="mb-4 rounded-lg border border-danger bg-forest-tint px-4 py-2.5 text-sm text-danger">
+          Your trial ended — pay within {billing.daysRemaining} day
+          {billing.daysRemaining === 1 ? "" : "s"} to keep your store live.{" "}
+          <Link href={`/my/${slug}/billing`} className="font-semibold underline">
+            Pay now
+          </Link>
+        </div>
+      )}
+      {billing.phase === "paused" && (
+        <div className="mb-4 rounded-lg border border-danger bg-forest-tint px-4 py-2.5 text-sm text-danger">
+          Your store is paused and not visible to buyers.{" "}
+          <Link href={`/my/${slug}/billing`} className="font-semibold underline">
+            Pay now to reopen
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <Link href="/my" className="text-xs text-ink-muted underline">
@@ -37,6 +67,9 @@ export default async function StoreDashboard({
           </Link>
           <Link href={`/my/${slug}/payouts`} className="text-sm font-semibold text-forest">
             Payouts
+          </Link>
+          <Link href={`/my/${slug}/billing`} className="text-sm font-semibold text-forest">
+            Billing
           </Link>
           <a href={`/?store=${slug}`} className="text-sm font-semibold text-forest">
             View store →

@@ -1,9 +1,13 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
-import { db, tenants, products } from "@/db";
+import { db, tenants, products, subscriptions } from "@/db";
 
 export async function getTenantBySlug(slug: string) {
   return db.query.tenants.findFirst({ where: eq(tenants.slug, slug) });
+}
+
+export async function getSubscriptionForTenant(tenantId: string) {
+  return db.query.subscriptions.findFirst({ where: eq(subscriptions.tenantId, tenantId) });
 }
 
 // Cart/checkout re-fetch product rows by id rather than trusting anything

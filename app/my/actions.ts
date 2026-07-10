@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { db, tenantMembers, tenants, users } from "@/db";
+import { db, subscriptions, tenantMembers, tenants, users } from "@/db";
 import { requestOtp, verifyOtp } from "@/lib/otp";
 import { createSession, destroySession, getSession } from "@/lib/auth";
 import { normalizePhone } from "@/lib/phone";
@@ -77,6 +77,7 @@ export async function createStore(formData: FormData) {
 
   const { businessName, category } = parsed.data;
   const slug = await uniqueTenantSlug(businessName);
+  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   const [tenant] = await db
     .insert(tenants)
@@ -86,7 +87,7 @@ export async function createStore(formData: FormData) {
       category,
       ownerPhone: session.user.phone,
       status: "trial",
-      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      trialEndsAt,
     })
     .returning();
 
@@ -94,6 +95,16 @@ export async function createStore(formData: FormData) {
     tenantId: tenant.id,
     userId: session.user.id,
     role: "owner",
+  });
+
+  // Part 3 §1 — every store starts on a 30-day Starter trial, no card
+  // required. This is what /my/[slug]/billing reads to show the
+  // countdown, and what gates the storefront pause once it lapses.
+  await db.insert(subscriptions).values({
+    tenantId: tenant.id,
+    tier: "starter",
+    status: "trialing",
+    trialEndsAt,
   });
 
   redirect("/my");

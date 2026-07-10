@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getActiveProductsForTenant, getTenantBySlug, CATEGORY_LABELS } from "@/lib/tenants";
+import { getActiveProductsForTenant, getTenantBySlug, getSubscriptionForTenant, CATEGORY_LABELS } from "@/lib/tenants";
 import { darkShade, lightTint } from "@/lib/color";
 import { getCart } from "@/lib/cart";
+import { getBillingState } from "@/lib/billing";
 import ProductGrid from "@/components/storefront/ProductGrid";
 import FoodMenu from "@/components/storefront/FoodMenu";
 
@@ -14,6 +15,25 @@ export default async function StorefrontPage({
   const { slug } = await params;
   const tenant = await getTenantBySlug(slug);
   if (!tenant) notFound();
+
+  const subscription = await getSubscriptionForTenant(tenant.id);
+  const billing = getBillingState(subscription);
+
+  // Part 3 §1: the store pauses — never a broken link or a deleted store —
+  // once the trial and its grace period both lapse unpaid.
+  if (billing.phase === "paused") {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          {tenant.businessName}
+        </p>
+        <h1 className="mt-2 text-2xl font-bold text-forest-dark">
+          This store is temporarily closed.
+        </h1>
+        <p className="mt-2 text-sm text-ink-muted">Please check back soon.</p>
+      </div>
+    );
+  }
 
   const products = await getActiveProductsForTenant(tenant.id);
   const cart = await getCart(tenant.id);
@@ -54,7 +74,7 @@ export default async function StorefrontPage({
             Cart{cartCount > 0 ? ` · ${cartCount}` : ""}
           </Link>
         </div>
-        {tenant.status === "trial" && (
+        {(billing.phase === "trial" || billing.phase === "grace") && (
           <span className="mt-3 inline-block rounded-full bg-gold px-3 py-1 text-xs font-semibold text-gold-ink">
             Trial store — not yet live
           </span>

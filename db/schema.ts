@@ -233,3 +233,4 @@ export const kycDocuments = pgTable("kyc_documents", {
 export type Tenant = typeof tenants.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
