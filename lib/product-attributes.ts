@@ -11,9 +11,15 @@ export function getSizes(product: Pick<Product, "attributes">): string[] {
 }
 
 export function getMenuSection(product: Pick<Product, "attributes">): string {
+  return getRawSection(product) ?? "Menu";
+}
+
+// Unlike getMenuSection, no "Menu" fallback — used to prefill the edit form
+// so an unset section shows as empty rather than a fake default value.
+export function getRawSection(product: Pick<Product, "attributes">): string | null {
   const raw = product.attributes as Record<string, unknown> | null;
   const section = raw?.section;
-  return typeof section === "string" && section.trim() ? section.trim() : "Menu";
+  return typeof section === "string" && section.trim() ? section.trim() : null;
 }
 
 // Groceries & Fresh Produce and Laundry & Home Services both price "per

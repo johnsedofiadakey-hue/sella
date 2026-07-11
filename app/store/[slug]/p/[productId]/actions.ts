@@ -5,6 +5,8 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db, products, enquiries, bookings } from "@/db";
 import { getTenantBySlug } from "@/lib/tenants";
+import { normalizePhone } from "@/lib/phone";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const enquirySchema = z.object({
   buyerName: z.string().trim().min(2, "Enter your name."),
@@ -29,6 +31,11 @@ export async function createEnquiry(slug: string, productId: string, formData: F
     message: formData.get("message") ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const rateLimitKey = `enquiry:${tenant.id}:${normalizePhone(parsed.data.buyerPhone)}`;
+  if (!(await checkRateLimit(rateLimitKey, 5, 10 * 60 * 1000))) {
+    return { error: "Too many enquiries sent — wait a few minutes and try again." };
+  }
 
   const [enquiry] = await db
     .insert(enquiries)
@@ -72,6 +79,11 @@ export async function createBooking(slug: string, productId: string, formData: F
   const scheduledFor = new Date(parsed.data.scheduledFor);
   if (scheduledFor.getTime() < Date.now()) {
     return { error: "Pick a time in the future." };
+  }
+
+  const rateLimitKey = `booking:${tenant.id}:${normalizePhone(parsed.data.buyerPhone)}`;
+  if (!(await checkRateLimit(rateLimitKey, 5, 10 * 60 * 1000))) {
+    return { error: "Too many booking requests — wait a few minutes and try again." };
   }
 
   const [booking] = await db

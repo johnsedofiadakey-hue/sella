@@ -88,7 +88,7 @@ export async function markDelivered(slug: string, orderId: string, otp: string) 
       deliveredAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(orders.id, orderId));
+    .where(and(eq(orders.id, orderId), eq(orders.tenantId, tenant.id)));
   revalidatePath(`/my/${slug}/orders`);
 }
 
@@ -124,7 +124,7 @@ export async function resolveDisputeAsMerchant(
     await db
       .update(orders)
       .set({ paymentStatus: "refunded", updatedAt: new Date() })
-      .where(eq(orders.id, dispute.orderId));
+      .where(and(eq(orders.id, dispute.orderId), eq(orders.tenantId, tenant.id)));
   }
 
   revalidatePath(`/my/${slug}/orders`);

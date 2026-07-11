@@ -6,6 +6,7 @@ import { hashSecret, verifySecret } from "./crypto";
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
+const MAX_VERIFY_ATTEMPTS = 5;
 
 function generateCode(): string {
   return String(randomInt(100_000, 1_000_000));
@@ -52,7 +53,19 @@ export async function verifyOtp(
   });
   if (!candidate) return false;
   if (candidate.expiresAt.getTime() < Date.now()) return false;
-  if (!verifySecret(code, candidate.codeHash)) return false;
+  // A 6-digit code is only 900,000 possibilities — without this, someone
+  // who knows a victim's phone number could brute-force it within the
+  // 5-minute TTL. Once locked, the only way forward is requesting a new
+  // code (still gated by the resend cooldown above).
+  if (candidate.attempts >= MAX_VERIFY_ATTEMPTS) return false;
+
+  if (!verifySecret(code, candidate.codeHash)) {
+    await db
+      .update(otpCodes)
+      .set({ attempts: candidate.attempts + 1 })
+      .where(eq(otpCodes.id, candidate.id));
+    return false;
+  }
 
   await db.update(otpCodes).set({ consumedAt: new Date() }).where(eq(otpCodes.id, candidate.id));
   return true;

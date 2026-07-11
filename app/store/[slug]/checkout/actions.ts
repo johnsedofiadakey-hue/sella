@@ -4,11 +4,20 @@ import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { getTenantBySlug, getProductsByIds } from "@/lib/tenants";
 import { getCart, clearCart } from "@/lib/cart";
-import { db, orders, orderItems } from "@/db";
+import { db, orders, orderItems, products as productsTable } from "@/db";
 import { hashSecret } from "@/lib/crypto";
 import { initializeTransaction, isPaystackConfigured } from "@/lib/paystack";
+import { normalizePhone } from "@/lib/phone";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+class OutOfStockError extends Error {
+  constructor(public productName: string) {
+    super(`Out of stock: ${productName}`);
+  }
+}
 
 const checkoutSchema = z.object({
   buyerName: z.string().trim().min(2, "Enter your name."),
@@ -50,6 +59,13 @@ export async function placeOrder(slug: string, formData: FormData) {
     return { error: "Card/MoMo payment isn't available right now — try pay on delivery." };
   }
 
+  // Generous enough that a buyer retrying a failed payment never hits it,
+  // tight enough to stop a script from flooding a merchant with fake orders.
+  const rateLimitKey = `checkout:${tenant.id}:${normalizePhone(parsed.data.buyerPhone)}`;
+  if (!(await checkRateLimit(rateLimitKey, 8, 10 * 60 * 1000))) {
+    return { error: "Too many attempts — wait a few minutes and try again." };
+  }
+
   const cart = await getCart(tenant.id);
   if (cart.length === 0) return { error: "Your cart is empty." };
 
@@ -74,31 +90,59 @@ export async function placeOrder(slug: string, formData: FormData) {
   // show it. There is deliberately no way to look it up again later.
   const deliveryOtp = fulfillmentType === "delivery" ? String(randomInt(1000, 10000)) : null;
 
-  const [order] = await db
-    .insert(orders)
-    .values({
-      tenantId: tenant.id,
-      buyerName: parsed.data.buyerName,
-      buyerPhone: parsed.data.buyerPhone,
-      fulfillmentType,
-      deliveryArea: deliveryArea || null,
-      deliveryLandmark: deliveryLandmark || null,
-      deliveryGpsCode: deliveryGpsCode || null,
-      totalCents,
-      paymentStatus: "pending",
-      deliveryOtpHash: deliveryOtp ? hashSecret(deliveryOtp) : null,
-    })
-    .returning();
+  let order: typeof orders.$inferSelect;
+  try {
+    order = await db.transaction(async (tx) => {
+      // Stock is decremented atomically inside the same transaction as the
+      // order — a conditional UPDATE (stock >= quantity) so two buyers
+      // racing for the last unit can't both succeed. Products with no
+      // stock tracking (stock === null) skip this entirely.
+      for (const line of lines) {
+        if (line.product.stock === null) continue;
+        const [updated] = await tx
+          .update(productsTable)
+          .set({ stock: sql`${productsTable.stock} - ${line.quantity}`, updatedAt: new Date() })
+          .where(and(eq(productsTable.id, line.product.id), gte(productsTable.stock, line.quantity)))
+          .returning({ id: productsTable.id });
+        if (!updated) throw new OutOfStockError(line.product.name);
+      }
 
-  await db.insert(orderItems).values(
-    lines.map((line) => ({
-      orderId: order.id,
-      productId: line.product.id,
-      nameSnapshot: line.product.name,
-      priceCentsSnapshot: line.product.priceCents,
-      quantity: line.quantity,
-    })),
-  );
+      const [newOrder] = await tx
+        .insert(orders)
+        .values({
+          tenantId: tenant.id,
+          buyerName: parsed.data.buyerName,
+          buyerPhone: parsed.data.buyerPhone,
+          fulfillmentType,
+          deliveryArea: deliveryArea || null,
+          deliveryLandmark: deliveryLandmark || null,
+          deliveryGpsCode: deliveryGpsCode || null,
+          totalCents,
+          paymentStatus: "pending",
+          deliveryOtpHash: deliveryOtp ? hashSecret(deliveryOtp) : null,
+        })
+        .returning();
+
+      await tx.insert(orderItems).values(
+        lines.map((line) => ({
+          orderId: newOrder.id,
+          productId: line.product.id,
+          nameSnapshot: line.product.name,
+          priceCentsSnapshot: line.product.priceCents,
+          quantity: line.quantity,
+        })),
+      );
+
+      return newOrder;
+    });
+  } catch (err) {
+    if (err instanceof OutOfStockError) {
+      return {
+        error: `Only a few of "${err.productName}" are left — someone just bought them. Update your cart and try again.`,
+      };
+    }
+    throw err;
+  }
 
   if (paymentMethod === "paystack") {
     const headerList = await headers();

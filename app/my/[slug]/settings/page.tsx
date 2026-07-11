@@ -17,12 +17,13 @@ export default async function StoreSettingsPage({
       </Link>
       <h1 className="mt-1 text-2xl font-bold text-forest-dark">Branding</h1>
       <p className="mt-1 text-sm text-ink-muted">
-        Your logo and two colours — everything else about your store stays fast and consistent
-        by design.
+        Your business name, logo, and two colours — everything else about your store stays fast
+        and consistent by design.
       </p>
 
       <BrandingForm
         slug={slug}
+        currentBusinessName={tenant.businessName}
         currentPrimary={tenant.themePrimaryColor ?? "#0b6e4f"}
         currentAccent={tenant.themeAccentColor ?? "#f2a007"}
         currentLogoUrl={tenant.logoUrl}

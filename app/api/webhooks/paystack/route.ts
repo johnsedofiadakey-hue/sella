@@ -27,12 +27,25 @@ export async function POST(request: NextRequest) {
       // as its reference, never this prefix, so the two never collide).
       await activateSubscriptionPayment(tenantId);
     } else if (reference) {
-      // Idempotent to run twice if both this webhook and the callback
-      // page fire for the same order.
-      await db
-        .update(orders)
-        .set({ paymentStatus: "paid", updatedAt: new Date() })
-        .where(eq(orders.id, reference));
+      // Defense in depth: not currently exploitable (Paystack's hosted
+      // checkout only ever lets a buyer pay the amount initializeTransaction
+      // set), but a mismatched amount here would mean something upstream —
+      // a reference collision, an amount bug — is wrong, so don't silently
+      // mark it paid.
+      const order = await db.query.orders.findFirst({ where: eq(orders.id, reference) });
+      const paidAmount: number | undefined = event.data?.amount;
+      if (order && paidAmount === order.totalCents) {
+        // Idempotent to run twice if both this webhook and the callback
+        // page fire for the same order.
+        await db
+          .update(orders)
+          .set({ paymentStatus: "paid", updatedAt: new Date() })
+          .where(eq(orders.id, reference));
+      } else if (order) {
+        console.error(
+          `[paystack webhook] amount mismatch on order ${reference}: paid ${paidAmount}, expected ${order.totalCents}`,
+        );
+      }
     }
   }
 

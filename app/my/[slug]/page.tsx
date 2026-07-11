@@ -96,6 +96,9 @@ export default async function StoreDashboard({
           <Link href={`/my/${slug}/settings`} className="text-sm font-semibold text-forest">
             Branding
           </Link>
+          <Link href={`/my/${slug}/team`} className="text-sm font-semibold text-forest">
+            Team
+          </Link>
           <Link href={`/my/${slug}/payouts`} className="text-sm font-semibold text-forest">
             Payouts
           </Link>
@@ -174,6 +177,12 @@ export default async function StoreDashboard({
                   <p className="text-xs text-ink-muted">Hidden from your store</p>
                 )}
               </div>
+              <Link
+                href={`/my/${slug}/products/${product.id}/edit`}
+                className="text-xs text-ink-muted underline"
+              >
+                Edit
+              </Link>
               <form
                 action={async () => {
                   "use server";

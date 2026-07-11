@@ -137,6 +137,10 @@ export const otpCodes = pgTable("otp_codes", {
   purpose: otpPurposeEnum("purpose").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  // Brute-force throttle — a 6-digit code is only 900,000 possibilities,
+  // guessable within its 5-minute TTL without this. lib/otp.ts locks the
+  // code out after 5 failed attempts.
+  attempts: integer("attempts").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("otp_codes_phone_idx").on(t.phone)]);
 
@@ -298,6 +302,17 @@ export const storeVisits = pgTable("store_visits", {
   tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("store_visits_tenant_idx").on(t.tenantId, t.createdAt)]);
+
+// ---- Rate limiting ---------------------------------------------------------
+// A generic "N hits per window per key" counter — no Redis in this stack
+// (Part 3 §2's Redis+BullMQ line is for background jobs, not provisioned
+// yet), so this is the boring Postgres equivalent. lib/rate-limit.ts owns
+// the key format and does its own opportunistic cleanup of old rows.
+export const rateLimitHits = pgTable("rate_limit_hits", {
+  id: id(),
+  key: text("key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("rate_limit_hits_key_idx").on(t.key, t.createdAt)]);
 
 // Buyer opens with reason + description; merchant has 48h (respondByAt) to
 // resolve directly or contest — contesting (or letting the clock run out)

@@ -35,6 +35,7 @@ async function setCart(tenantId: string, items: CartItem[]): Promise<void> {
   const jar = await cookies();
   jar.set(cartCookieName(tenantId), JSON.stringify(items), {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: CART_TTL_SECONDS,

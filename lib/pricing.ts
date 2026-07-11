@@ -29,3 +29,22 @@ export const PRICING_TIERS = [
     features: ["Unlimited products", "Custom domain, no Sella branding", "10 staff accounts with roles"],
   },
 ] as const;
+
+// Enforced limits behind the marketing copy above — kept as one source of
+// truth so the pricing page and the actual enforcement in
+// app/my/[slug]/actions.ts / app/my/[slug]/settings/actions.ts can't drift
+// apart. `null` means unlimited.
+export const PRODUCT_LIMITS: Record<string, number | null> = {
+  starter: 25,
+  growth: 500,
+  pro: null,
+};
+
+// Starter's feature list doesn't mention staff accounts at all — it's
+// owner-only, matching Part 3 §1's tier ladder (no line item = the owner is
+// the only account).
+export const STAFF_LIMITS: Record<string, number> = {
+  starter: 1,
+  growth: 3,
+  pro: 10,
+};

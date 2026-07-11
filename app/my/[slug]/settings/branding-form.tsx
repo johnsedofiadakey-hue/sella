@@ -5,11 +5,13 @@ import { updateBranding } from "../actions";
 
 export default function BrandingForm({
   slug,
+  currentBusinessName,
   currentPrimary,
   currentAccent,
   currentLogoUrl,
 }: {
   slug: string;
+  currentBusinessName: string;
   currentPrimary: string;
   currentAccent: string;
   currentLogoUrl: string | null;
@@ -30,6 +32,16 @@ export default function BrandingForm({
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+      <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+        Business name
+        <input
+          name="businessName"
+          required
+          defaultValue={currentBusinessName}
+          className="rounded-md border border-border bg-surface px-3 py-2.5 text-ink outline-none focus:border-forest"
+        />
+      </label>
+
       <label className="flex flex-col gap-1 text-sm font-medium text-ink">
         Logo
         {currentLogoUrl && (
